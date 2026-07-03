@@ -2,20 +2,20 @@
   "name": "言夜 - 多语种学习平台",
   "short_name": "言夜",
   "description": "沉浸式多语种学习平台，支持英语、日语、韩语、泰语等主流语言",
-  "start_url": "/",
+  "start_url": "./",
   "display": "standalone",
   "orientation": "portrait",
   "background_color": "#0f0f1a",
   "theme_color": "#0f0f1a",
   "icons": [
     {
-      "src": "/icon-192.png",
+      "src": "./icon-192.png",
       "sizes": "192x192",
       "type": "image/png",
       "purpose": "any maskable"
     },
     {
-      "src": "/icon-512.png",
+      "src": "./icon-512.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any maskable"
@@ -23,5 +23,5 @@
   ],
   "categories": ["education", "lifestyle"],
   "lang": "zh-CN",
-  "scope": "/"
+  "scope": "./"
 }
