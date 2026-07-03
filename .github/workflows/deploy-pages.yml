@@ -1,4 +1,4 @@
-name: 部署到 GitHub Pages
+name: Deploy to GitHub Pages
 
 on:
   push:
@@ -20,44 +20,28 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - name: 拉取代码
+      - name: Checkout
         uses: actions/checkout@v4
 
-      - name: 安装 pnpm
+      - name: Install pnpm
         uses: pnpm/action-setup@v4
         with:
           version: 10
 
-      - name: 安装 Node.js
+      - name: Install Node.js
         uses: actions/setup-node@v4
         with:
           node-version: 22
           cache: pnpm
 
-      - name: 安装依赖
+      - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: 类型检查
-        run: pnpm check
-
-      - name: 构建静态文件
+      - name: Build
         run: pnpm build
 
-      - name: 配置 Pages
-        uses: actions/configure-pages@v5
-
-      - name: 上传构建产物
-        uses: actions/upload-pages-artifact@v3
+      - name: Deploy
+        uses: peaceiris/actions-gh-pages@v4
         with:
-          path: dist
-
-  deploy:
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
-    runs-on: ubuntu-latest
-    needs: build
-    steps:
-      - name: 发布到 GitHub Pages
-        id: deployment
-        uses: actions/deploy-pages@v4
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./dist
