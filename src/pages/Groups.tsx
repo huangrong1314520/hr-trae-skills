@@ -64,7 +64,7 @@ export default function Groups() {
               >
                 <div
                   className="w-12 h-12 rounded-xl flex items-center justify-center text-2xl mb-4"
-                  style={{ backgroundColor: cfg?.color ? `${cfg.color}20` : 'rgba(240,160,80,0.1)' }}
+                  style={{ backgroundColor: cfg?.color ? `${cfg.color}20` : 'rgba(16,185,129,0.1)' }}
                 >
                   {cfg?.emoji || '🌐'}
                 </div>

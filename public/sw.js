@@ -1,4 +1,4 @@
-const CACHE_NAME = 'langnight-v1';
+const CACHE_NAME = 'langnight-v2';
 const urlsToCache = [
   '/',
   '/index.html',

@@ -221,7 +221,7 @@ export default function Achievements() {
                   key={badge.id}
                   className={`glass-card p-4 text-center transition-all duration-300 ${
                     badge.unlocked
-                      ? 'border-emerald/30 shadow-[0_0_20px_rgba(240,160,80,0.1)]'
+                      ? 'border-emerald/30 shadow-[0_0_20px_rgba(16,185,129,0.1)]'
                       : 'opacity-40 grayscale'
                   }`}
                 >
