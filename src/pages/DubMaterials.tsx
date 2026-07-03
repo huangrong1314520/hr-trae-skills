@@ -44,7 +44,7 @@ function LanguageTab({
       onClick={onClick}
       className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-medium transition-all duration-300
         ${isActive
-          ? 'bg-amber/15 text-amber border border-amber/30'
+          ? 'bg-emerald/15 text-emerald border border-emerald/30'
           : 'text-moon-dim hover:text-moon border border-transparent hover:bg-white/5'
         }`}
     >
@@ -205,7 +205,7 @@ export default function DubMaterials() {
             >
               {/* Cover Image Placeholder */}
               <div
-                className={`h-40 bg-gradient-to-br ${langGradientMap[m.language] || 'from-amber/30 to-amber/10'} flex items-center justify-center`}
+                className={`h-40 bg-gradient-to-br ${langGradientMap[m.language] || 'from-emerald/30 to-emerald/10'} flex items-center justify-center`}
               >
                 <span className="text-5xl opacity-40">
                   {LANG_CONFIG[m.language]?.emoji || '🎬'}
@@ -213,7 +213,7 @@ export default function DubMaterials() {
               </div>
 
               <div className="p-4 space-y-3">
-                <h3 className="font-serif text-lg font-semibold text-moon group-hover:text-amber transition-colors line-clamp-1">
+                <h3 className="font-serif text-lg font-semibold text-moon group-hover:text-emerald transition-colors line-clamp-1">
                   {m.title}
                 </h3>
                 <p className="text-sm text-moon-dim">{m.source}</p>
@@ -221,7 +221,7 @@ export default function DubMaterials() {
                 <div className="flex flex-wrap items-center gap-2">
                   <span
                     className={`text-xs px-2.5 py-0.5 rounded-full border ${
-                      langTextMap[m.language] || 'text-amber'
+                      langTextMap[m.language] || 'text-emerald'
                     } border-current/30 bg-current/5`}
                   >
                     {LEVEL_LABELS[m.level] || m.level}

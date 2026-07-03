@@ -128,7 +128,7 @@ export default function DubRecord() {
       <div className="flex items-center gap-4">
         <button
           onClick={() => navigate('/dub')}
-          className="p-2 rounded-lg hover:bg-amber/10 text-moon-dim hover:text-moon transition-colors"
+          className="p-2 rounded-lg hover:bg-emerald/10 text-moon-dim hover:text-moon transition-colors"
         >
           <ArrowLeft size={20} />
         </button>
@@ -159,7 +159,7 @@ export default function DubRecord() {
                     recordedLines.has(i)
                       ? 'bg-celadon'
                       : i === currentLineIndex
-                        ? 'bg-amber'
+                        ? 'bg-emerald'
                         : 'bg-white/15'
                   }`}
                 />
@@ -185,7 +185,7 @@ export default function DubRecord() {
                 {Array.from({ length: 12 }).map((_, i) => (
                   <div
                     key={i}
-                    className="w-1.5 bg-amber/60 rounded-full"
+                    className="w-1.5 bg-emerald/60 rounded-full"
                     style={{
                       height: `${Math.sin(Date.now() / 200 + i * 0.5) * 20 + 24}px`,
                       animation: `float ${0.5 + Math.random() * 0.5}s ease-in-out infinite`,
@@ -202,7 +202,7 @@ export default function DubRecord() {
               className={`mx-auto w-24 h-24 rounded-full flex items-center justify-center transition-all duration-300
                 ${isRecording
                   ? 'bg-red-500/20 text-red-400 recording-pulse'
-                  : 'bg-amber/15 text-amber hover:bg-amber/25'
+                  : 'bg-emerald/15 text-emerald hover:bg-emerald/25'
                 }`}
             >
               <Mic size={40} />
@@ -232,7 +232,7 @@ export default function DubRecord() {
                         recordedScore >= 80
                           ? 'bg-celadon'
                           : recordedScore >= 60
-                            ? 'bg-amber'
+                            ? 'bg-emerald'
                             : 'bg-sakura'
                       }`}
                       style={{ width: `${recordedScore}%` }}

@@ -104,7 +104,7 @@ export default function Home() {
             transition={{ delay: i * 0.1, duration: 0.4 }}
             className="glass-card p-5 flex flex-col items-center gap-2"
           >
-            <item.icon className="w-6 h-6 text-amber" />
+            <item.icon className="w-6 h-6 text-emerald" />
             {statsLoading ? (
               <div className="skeleton h-8 w-16 rounded" />
             ) : (
@@ -130,7 +130,7 @@ export default function Home() {
             >
               <Link
                 to={rec.to}
-                className="glass-card p-5 flex flex-col items-center gap-3 h-full hover:border-amber/30"
+                className="glass-card p-5 flex flex-col items-center gap-3 h-full hover:border-emerald/30"
               >
                 <div
                   className={`w-14 h-14 rounded-full bg-gradient-to-br ${rec.bg} flex items-center justify-center`}
@@ -177,7 +177,7 @@ export default function Home() {
             {posts.map((post) => (
               <div key={post.id} className="glass-card p-4">
                 <div className="flex items-center gap-3 mb-3">
-                  <div className="w-9 h-9 rounded-full bg-amber/20 flex items-center justify-center text-amber text-sm font-semibold">
+                  <div className="w-9 h-9 rounded-full bg-emerald/20 flex items-center justify-center text-emerald text-sm font-semibold">
                     {post.username?.[0]?.toUpperCase() || '?'}
                   </div>
                   <span className="text-sm font-medium text-moon">{post.username}</span>
@@ -190,8 +190,8 @@ export default function Home() {
                       {TYPE_BADGE[post.type].label}
                     </span>
                   )}
-                  <button className="flex items-center gap-1 text-xs text-moon-dim hover:text-amber transition-colors ml-auto">
-                    <Heart className={`w-4 h-4 ${post.liked ? 'fill-amber text-amber' : ''}`} />
+                  <button className="flex items-center gap-1 text-xs text-moon-dim hover:text-emerald transition-colors ml-auto">
+                    <Heart className={`w-4 h-4 ${post.liked ? 'fill-emerald text-emerald' : ''}`} />
                     {post.likes}
                   </button>
                 </div>

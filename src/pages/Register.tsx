@@ -88,7 +88,7 @@ export default function Register() {
 
         <div className="glass-card p-8">
           <div className="text-center mb-8">
-            <h1 className="font-serif text-5xl font-bold text-amber mb-2">言夜</h1>
+            <h1 className="font-serif text-5xl font-bold text-emerald mb-2">言夜</h1>
             <p className="text-moon-dim">创建你的语言学习账号</p>
           </div>
 
@@ -205,7 +205,7 @@ export default function Register() {
                       key={code}
                       className={`flex items-center gap-2 px-3 py-2.5 rounded-lg border cursor-pointer transition-all text-sm
                         ${isChecked
-                          ? 'border-amber/50 bg-amber/10 text-moon'
+                          ? 'border-emerald/50 bg-emerald/10 text-moon'
                           : 'border-white/5 bg-white/5 text-moon-dim hover:border-white/10 hover:text-moon'
                         }`}
                     >
@@ -254,7 +254,7 @@ export default function Register() {
 
           <div className="mt-6 text-center text-moon-dim">
             <span>已有账号？</span>{' '}
-            <Link to="/login" className="text-amber hover:underline font-medium">
+            <Link to="/login" className="text-emerald hover:underline font-medium">
               登录
             </Link>
           </div>

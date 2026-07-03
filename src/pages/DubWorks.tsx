@@ -39,7 +39,7 @@ function LanguageTab({
       onClick={onClick}
       className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-medium transition-all duration-300
         ${isActive
-          ? 'bg-amber/15 text-amber border border-amber/30'
+          ? 'bg-emerald/15 text-emerald border border-emerald/30'
           : 'text-moon-dim hover:text-moon border border-transparent hover:bg-white/5'
         }`}
     >
@@ -123,7 +123,7 @@ export default function DubWorks() {
 
   const scoreColor = (score: number) => {
     if (score >= 85) return 'text-celadon bg-celadon/10 border-celadon/30';
-    if (score >= 70) return 'text-amber bg-amber/10 border-amber/30';
+    if (score >= 70) return 'text-emerald bg-emerald/10 border-emerald/30';
     return 'text-sakura bg-sakura/10 border-sakura/30';
   };
 
@@ -141,7 +141,7 @@ export default function DubWorks() {
           onClick={() => setSort('popular')}
           className={`px-5 py-2 rounded-xl text-sm font-medium transition-all duration-300
             ${sort === 'popular'
-              ? 'bg-amber/15 text-amber border border-amber/30'
+              ? 'bg-emerald/15 text-emerald border border-emerald/30'
               : 'text-moon-dim hover:text-moon border border-transparent hover:bg-white/5'
             }`}
         >
@@ -151,7 +151,7 @@ export default function DubWorks() {
           onClick={() => setSort('latest')}
           className={`px-5 py-2 rounded-xl text-sm font-medium transition-all duration-300
             ${sort === 'latest'
-              ? 'bg-amber/15 text-amber border border-amber/30'
+              ? 'bg-emerald/15 text-emerald border border-emerald/30'
               : 'text-moon-dim hover:text-moon border border-transparent hover:bg-white/5'
             }`}
         >
@@ -197,7 +197,7 @@ export default function DubWorks() {
               <div key={work.id} className="glass-card p-5 space-y-4">
                 {/* User Info */}
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-full bg-amber/15 flex items-center justify-center text-amber text-sm font-bold shrink-0">
+                  <div className="w-10 h-10 rounded-full bg-emerald/15 flex items-center justify-center text-emerald text-sm font-bold shrink-0">
                     {work.user.avatarUrl ? (
                       <img
                         src={work.user.avatarUrl}

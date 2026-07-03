@@ -118,7 +118,7 @@ export default function CourseDetail() {
     return (
       <div className="space-y-4">
         <div className="glass-card p-6 text-center">
-          <p className="font-serif text-3xl font-bold text-amber mb-2">{content.term || '—'}</p>
+          <p className="font-serif text-3xl font-bold text-emerald mb-2">{content.term || '—'}</p>
           <p className="text-moon text-lg">{content.meaning || '—'}</p>
         </div>
         {content.examples && content.examples.length > 0 && (
@@ -164,7 +164,7 @@ export default function CourseDetail() {
       <div className="space-y-6">
         <div className="glass-card p-6 text-center space-y-4">
           <button
-            className="mx-auto w-14 h-14 rounded-full bg-amber/15 flex items-center justify-center text-amber hover:bg-amber/25 transition-colors"
+            className="mx-auto w-14 h-14 rounded-full bg-emerald/15 flex items-center justify-center text-emerald hover:bg-emerald/25 transition-colors"
             onClick={() => {}}
           >
             <Volume2 size={24} />
@@ -180,8 +180,8 @@ export default function CourseDetail() {
                 onClick={() => setSelectedAnswer(opt)}
                 className={`w-full text-left glass-card p-4 transition-all duration-200
                   ${selectedAnswer === opt
-                    ? 'border-amber/50 bg-amber/10 text-amber'
-                    : 'hover:border-amber/20 text-moon-dim'
+                    ? 'border-emerald/50 bg-emerald/10 text-emerald'
+                    : 'hover:border-emerald/20 text-moon-dim'
                   }`}
               >
                 {opt}
@@ -216,7 +216,7 @@ export default function CourseDetail() {
             className={`mx-auto w-20 h-20 rounded-full flex items-center justify-center transition-all duration-300
               ${isRecording
                 ? 'bg-red-500/20 text-red-400 recording-pulse'
-                : 'bg-amber/15 text-amber hover:bg-amber/25'
+                : 'bg-emerald/15 text-emerald hover:bg-emerald/25'
               }`}
           >
             <Mic size={32} />
@@ -230,7 +230,7 @@ export default function CourseDetail() {
               {Array.from({ length: 8 }).map((_, i) => (
                 <div
                   key={i}
-                  className="w-1.5 bg-amber/60 rounded-full animate-float"
+                  className="w-1.5 bg-emerald/60 rounded-full animate-float"
                   style={{
                     height: `${Math.random() * 32 + 4}px`,
                     animationDelay: `${i * 0.1}s`,
@@ -248,7 +248,7 @@ export default function CourseDetail() {
               <div className="flex-1 h-3 rounded-full bg-white/10 overflow-hidden">
                 <div
                   className={`h-full rounded-full transition-all duration-700 ${
-                    recordedScore >= 80 ? 'bg-celadon' : recordedScore >= 60 ? 'bg-amber' : 'bg-sakura'
+                    recordedScore >= 80 ? 'bg-celadon' : recordedScore >= 60 ? 'bg-emerald' : 'bg-sakura'
                   }`}
                   style={{ width: `${recordedScore}%` }}
                 />
@@ -283,7 +283,7 @@ export default function CourseDetail() {
       <div className="flex items-center gap-4">
         <button
           onClick={() => navigate('/courses')}
-          className="p-2 rounded-lg hover:bg-amber/10 text-moon-dim hover:text-moon transition-colors"
+          className="p-2 rounded-lg hover:bg-emerald/10 text-moon-dim hover:text-moon transition-colors"
         >
           <ArrowLeft size={20} />
         </button>
@@ -312,7 +312,7 @@ export default function CourseDetail() {
                 }}
                 className={`flex flex-col items-center gap-1 py-2 px-1 rounded-lg transition-all flex-1
                   ${isActive
-                    ? 'text-amber bg-amber/10'
+                    ? 'text-emerald bg-emerald/10'
                     : isCompleted
                       ? 'text-celadon hover:bg-white/5'
                       : 'text-moon-dim'

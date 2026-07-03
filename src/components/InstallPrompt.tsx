@@ -51,7 +51,7 @@ export default function InstallPrompt() {
   return (
     <div className="fixed bottom-20 left-4 right-4 md:left-auto md:right-4 md:w-80 z-50 animate-fade-up">
       <div className="glass-card p-4 flex items-center gap-3">
-        <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-amber to-amber-dark flex items-center justify-center text-night font-bold text-lg shrink-0">
+        <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald to-emerald-dark flex items-center justify-center text-night font-bold text-lg shrink-0">
           言
         </div>
         <div className="flex-1 min-w-0">

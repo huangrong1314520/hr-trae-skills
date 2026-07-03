@@ -39,7 +39,7 @@ export default function Login() {
       <div className="relative z-10 w-full max-w-md px-4">
         <div className="glass-card p-8">
           <div className="text-center mb-8">
-            <h1 className="font-serif text-5xl font-bold text-amber mb-2">言夜</h1>
+            <h1 className="font-serif text-5xl font-bold text-emerald mb-2">言夜</h1>
             <p className="text-moon-dim">语言交流的深夜驿站</p>
           </div>
 
@@ -104,7 +104,7 @@ export default function Login() {
 
           <div className="mt-6 text-center text-moon-dim">
             <span>还没有账号？</span>{' '}
-            <Link to="/register" className="text-amber hover:underline font-medium">
+            <Link to="/register" className="text-emerald hover:underline font-medium">
               注册
             </Link>
           </div>

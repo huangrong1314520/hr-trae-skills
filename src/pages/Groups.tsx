@@ -59,7 +59,7 @@ export default function Groups() {
             return (
               <div
                 key={group.id}
-                className="glass-card p-6 flex flex-col hover:border-amber/30 transition-all duration-200 group cursor-pointer"
+                className="glass-card p-6 flex flex-col hover:border-emerald/30 transition-all duration-200 group cursor-pointer"
                 onClick={() => navigate(`/groups/${group.language}`)}
               >
                 <div
@@ -77,7 +77,7 @@ export default function Groups() {
                     <Users size={14} />
                     {group.memberCount} 位成员
                   </span>
-                  <button className="flex items-center gap-1 text-sm text-amber group-hover:gap-2 transition-all duration-200">
+                  <button className="flex items-center gap-1 text-sm text-emerald group-hover:gap-2 transition-all duration-200">
                     进入群组 <ArrowRight size={14} />
                   </button>
                 </div>

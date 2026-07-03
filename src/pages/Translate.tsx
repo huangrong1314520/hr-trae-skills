@@ -115,8 +115,8 @@ export default function Translate() {
           onClick={() => setActiveTab('daily')}
           className={`px-5 py-2 rounded-xl text-sm font-medium transition-all duration-200 ${
             activeTab === 'daily'
-              ? 'bg-amber/15 text-amber border border-amber/20'
-              : 'text-moon-dim hover:text-moon hover:bg-amber/5'
+              ? 'bg-emerald/15 text-emerald border border-emerald/20'
+              : 'text-moon-dim hover:text-moon hover:bg-emerald/5'
           }`}
         >
           每日翻译
@@ -125,8 +125,8 @@ export default function Translate() {
           onClick={() => setActiveTab('community')}
           className={`px-5 py-2 rounded-xl text-sm font-medium transition-all duration-200 ${
             activeTab === 'community'
-              ? 'bg-amber/15 text-amber border border-amber/20'
-              : 'text-moon-dim hover:text-moon hover:bg-amber/5'
+              ? 'bg-emerald/15 text-emerald border border-emerald/20'
+              : 'text-moon-dim hover:text-moon hover:bg-emerald/5'
           }`}
         >
           社区互评
@@ -147,7 +147,7 @@ export default function Translate() {
               {/* Source Text Card */}
               <div className="glass-card p-6 space-y-4">
                 <div className="flex items-center gap-3">
-                  <span className="text-xs px-2.5 py-1 rounded-full bg-amber/10 text-amber border border-amber/20">
+                  <span className="text-xs px-2.5 py-1 rounded-full bg-emerald/10 text-emerald border border-emerald/20">
                     {LANG_CONFIG[dailyTask.sourceLang]?.emoji} {LANG_CONFIG[dailyTask.sourceLang]?.name}
                     {' → '}
                     {LANG_CONFIG[dailyTask.targetLang]?.emoji} {LANG_CONFIG[dailyTask.targetLang]?.name}
@@ -203,12 +203,12 @@ export default function Translate() {
                     <div>
                       <button
                         onClick={() => setShowReference(!showReference)}
-                        className="flex items-center gap-1 text-sm text-amber hover:text-amber/80 transition-colors"
+                        className="flex items-center gap-1 text-sm text-emerald hover:text-emerald/80 transition-colors"
                       >
                         参考译文 {showReference ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
                       </button>
                       {showReference && (
-                        <p className="mt-2 p-3 rounded-lg bg-amber/5 border border-amber/10 text-moon text-sm">
+                        <p className="mt-2 p-3 rounded-lg bg-emerald/5 border border-emerald/10 text-moon text-sm">
                           {dailyTask.referenceTranslation}
                         </p>
                       )}
@@ -252,8 +252,8 @@ export default function Translate() {
                 onClick={() => setCommunityLang(lang)}
                 className={`px-4 py-1.5 rounded-xl text-sm font-medium transition-all duration-200 ${
                   communityLang === lang
-                    ? 'bg-amber/15 text-amber border border-amber/20'
-                    : 'text-moon-dim hover:text-moon hover:bg-amber/5'
+                    ? 'bg-emerald/15 text-emerald border border-emerald/20'
+                    : 'text-moon-dim hover:text-moon hover:bg-emerald/5'
                 }`}
               >
                 {LANG_CONFIG[lang]?.emoji} {LANG_CONFIG[lang]?.name}
@@ -281,11 +281,11 @@ export default function Translate() {
               {translations.map((t) => (
                 <div
                   key={t.id}
-                  className="glass-card p-4 cursor-pointer hover:border-amber/30 transition-all duration-200"
+                  className="glass-card p-4 cursor-pointer hover:border-emerald/30 transition-all duration-200"
                   onClick={() => setExpandedId(expandedId === t.id ? null : t.id)}
                 >
                   <div className="flex items-center gap-3 mb-2">
-                    <div className="w-7 h-7 rounded-full bg-amber/20 flex items-center justify-center text-amber text-xs font-bold">
+                    <div className="w-7 h-7 rounded-full bg-emerald/20 flex items-center justify-center text-emerald text-xs font-bold">
                       {t.user?.username?.[0]?.toUpperCase() || '?'}
                     </div>
                     <span className="text-sm text-moon">{t.user?.username || '匿名用户'}</span>
@@ -306,14 +306,14 @@ export default function Translate() {
                   <p className="text-sm text-moon">{t.translation}</p>
 
                   {expandedId === t.id && (
-                    <div className="mt-3 pt-3 border-t border-amber/10 space-y-2">
+                    <div className="mt-3 pt-3 border-t border-emerald/10 space-y-2">
                       {t.sourceInfo && (
                         <p className="text-xs text-moon-dim">来源：{t.sourceInfo}</p>
                       )}
                       {t.referenceTranslation && (
                         <div>
                           <p className="text-xs text-moon-dim mb-1">参考译文</p>
-                          <p className="text-xs text-moon bg-amber/5 p-2 rounded-lg">{t.referenceTranslation}</p>
+                          <p className="text-xs text-moon bg-emerald/5 p-2 rounded-lg">{t.referenceTranslation}</p>
                         </div>
                       )}
                     </div>

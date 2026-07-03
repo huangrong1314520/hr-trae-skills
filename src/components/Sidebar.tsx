@@ -30,12 +30,12 @@ export default function Sidebar() {
     <aside
       className={`fixed left-0 top-0 h-full z-40 flex flex-col transition-all duration-300 ease-in-out
         ${sidebarCollapsed ? 'w-16' : 'w-56'}
-        bg-night/80 backdrop-blur-xl border-r border-amber/10`}
+        bg-night/80 backdrop-blur-xl border-r border-emerald/10`}
     >
       {/* Logo */}
-      <div className="flex items-center h-16 px-4 border-b border-amber/10">
+      <div className="flex items-center h-16 px-4 border-b border-emerald/10">
         <div className="flex items-center gap-3">
-          <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-amber to-amber-dark flex items-center justify-center text-night font-bold text-sm shrink-0">
+          <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-emerald to-emerald-dark flex items-center justify-center text-night font-bold text-sm shrink-0">
             言
           </div>
           {!sidebarCollapsed && (
@@ -46,7 +46,7 @@ export default function Sidebar() {
         </div>
         <button
           onClick={toggleSidebar}
-          className="ml-auto p-1.5 rounded-lg hover:bg-amber/10 transition-colors text-moon-dim"
+          className="ml-auto p-1.5 rounded-lg hover:bg-emerald/10 transition-colors text-moon-dim"
         >
           {sidebarCollapsed ? <ChevronRight size={18} /> : <ChevronLeft size={18} />}
         </button>
@@ -62,8 +62,8 @@ export default function Sidebar() {
               `flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-200
               ${sidebarCollapsed ? 'justify-center' : ''}
               ${isActive
-                ? 'bg-amber/15 text-amber border border-amber/20'
-                : 'text-moon-dim hover:bg-amber/5 hover:text-moon'
+                ? 'bg-emerald/15 text-emerald border border-emerald/20'
+                : 'text-moon-dim hover:bg-emerald/5 hover:text-moon'
               }`
             }
           >
@@ -76,10 +76,10 @@ export default function Sidebar() {
       </nav>
 
       {/* User section */}
-      <div className="p-3 border-t border-amber/10">
+      <div className="p-3 border-t border-emerald/10">
         {user ? (
           <div className={`flex items-center gap-3 ${sidebarCollapsed ? 'justify-center' : ''}`}>
-            <div className="w-8 h-8 rounded-full bg-amber/20 flex items-center justify-center text-amber text-sm font-bold shrink-0">
+            <div className="w-8 h-8 rounded-full bg-emerald/20 flex items-center justify-center text-emerald text-sm font-bold shrink-0">
               {user.username[0].toUpperCase()}
             </div>
             {!sidebarCollapsed && (

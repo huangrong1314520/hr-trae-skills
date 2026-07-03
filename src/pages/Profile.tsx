@@ -99,7 +99,7 @@ export default function Profile() {
   const levelColor = (level: string) => {
     switch (level) {
       case 'beginner': return 'bg-green-500/10 text-green-400 border-green-500/20';
-      case 'intermediate': return 'bg-amber/10 text-amber border-amber/20';
+      case 'intermediate': return 'bg-emerald/10 text-emerald border-emerald/20';
       case 'advanced': return 'bg-purple-500/10 text-purple-400 border-purple-500/20';
       default: return 'bg-moon-dim/10 text-moon-dim border-moon-dim/20';
     }
@@ -143,7 +143,7 @@ export default function Profile() {
       {/* Profile Header */}
       <div className="glass-card p-6">
         <div className="flex items-start gap-4">
-          <div className="w-16 h-16 rounded-full bg-amber/20 flex items-center justify-center text-amber text-2xl font-bold shrink-0">
+          <div className="w-16 h-16 rounded-full bg-emerald/20 flex items-center justify-center text-emerald text-2xl font-bold shrink-0">
             {profile.username[0].toUpperCase()}
           </div>
           <div className="flex-1 min-w-0">
@@ -152,7 +152,7 @@ export default function Profile() {
               {!editing && (
                 <button
                   onClick={() => { setEditing(true); setEditBio(profile.bio || ''); }}
-                  className="p-1.5 rounded-lg hover:bg-amber/10 text-moon-dim hover:text-amber transition-colors"
+                  className="p-1.5 rounded-lg hover:bg-emerald/10 text-moon-dim hover:text-emerald transition-colors"
                 >
                   <Edit2 size={14} />
                 </button>
@@ -203,28 +203,28 @@ export default function Profile() {
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         <div className="glass-card p-4 text-center">
           <div className="flex justify-center mb-2">
-            <Calendar2 size={20} className="text-amber" />
+            <Calendar2 size={20} className="text-emerald" />
           </div>
           <p className="text-2xl font-bold text-moon">{stats.totalCheckins}</p>
           <p className="text-xs text-moon-dim">打卡天数</p>
         </div>
         <div className="glass-card p-4 text-center">
           <div className="flex justify-center mb-2">
-            <Mic size={20} className="text-amber" />
+            <Mic size={20} className="text-emerald" />
           </div>
           <p className="text-2xl font-bold text-moon">{stats.totalDubWorks}</p>
           <p className="text-xs text-moon-dim">配音作品</p>
         </div>
         <div className="glass-card p-4 text-center">
           <div className="flex justify-center mb-2">
-            <Languages size={20} className="text-amber" />
+            <Languages size={20} className="text-emerald" />
           </div>
           <p className="text-2xl font-bold text-moon">{stats.totalTranslations}</p>
           <p className="text-xs text-moon-dim">翻译数量</p>
         </div>
         <div className="glass-card p-4 text-center">
           <div className="flex justify-center mb-2">
-            <Flame size={20} className="text-amber" />
+            <Flame size={20} className="text-emerald" />
           </div>
           <p className="text-2xl font-bold text-moon">{stats.streak}</p>
           <p className="text-xs text-moon-dim">连续打卡</p>
@@ -261,8 +261,8 @@ export default function Profile() {
               onClick={() => setWorksTab(tab)}
               className={`px-4 py-1.5 rounded-xl text-xs font-medium transition-all duration-200 ${
                 worksTab === tab
-                  ? 'bg-amber/15 text-amber border border-amber/20'
-                  : 'text-moon-dim hover:text-moon hover:bg-amber/5'
+                  ? 'bg-emerald/15 text-emerald border border-emerald/20'
+                  : 'text-moon-dim hover:text-moon hover:bg-emerald/5'
               }`}
             >
               {tab === 'dub' ? '配音' : tab === 'translate' ? '翻译' : '手写'}
@@ -280,7 +280,7 @@ export default function Profile() {
         ) : (
           <div className="space-y-2">
             {works.map((work) => (
-              <div key={work.id} className="flex items-center gap-3 p-2 rounded-lg hover:bg-amber/5 transition-colors">
+              <div key={work.id} className="flex items-center gap-3 p-2 rounded-lg hover:bg-emerald/5 transition-colors">
                 <span className="text-xs">{LANG_CONFIG[work.language]?.emoji}</span>
                 <span className="text-sm text-moon flex-1">{work.title}</span>
                 <span className="text-xs text-moon-dim">{formatDate(work.createdAt)}</span>
@@ -296,7 +296,7 @@ export default function Profile() {
         <div className="space-y-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <Target size={16} className="text-amber" />
+              <Target size={16} className="text-emerald" />
               <span className="text-sm text-moon">每日学习目标</span>
             </div>
             <div className="flex items-center gap-2">
@@ -308,19 +308,19 @@ export default function Profile() {
                 step={5}
                 value={dailyGoal}
                 onChange={(e) => setDailyGoal(Number(e.target.value))}
-                className="w-20 accent-amber"
+                className="w-20 accent-emerald"
               />
             </div>
           </div>
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <Bell size={16} className="text-amber" />
+              <Bell size={16} className="text-emerald" />
               <span className="text-sm text-moon">打卡提醒</span>
             </div>
             <button
               onClick={() => setNotifyCheckin(!notifyCheckin)}
               className={`w-11 h-6 rounded-full transition-colors relative ${
-                notifyCheckin ? 'bg-amber' : 'bg-moon-dim/20'
+                notifyCheckin ? 'bg-emerald' : 'bg-moon-dim/20'
               }`}
             >
               <div className={`absolute top-0.5 w-5 h-5 rounded-full bg-white transition-all duration-200 ${
@@ -330,13 +330,13 @@ export default function Profile() {
           </div>
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <Bell size={16} className="text-amber" />
+              <Bell size={16} className="text-emerald" />
               <span className="text-sm text-moon">新内容通知</span>
             </div>
             <button
               onClick={() => setNotifyNewContent(!notifyNewContent)}
               className={`w-11 h-6 rounded-full transition-colors relative ${
-                notifyNewContent ? 'bg-amber' : 'bg-moon-dim/20'
+                notifyNewContent ? 'bg-emerald' : 'bg-moon-dim/20'
               }`}
             >
               <div className={`absolute top-0.5 w-5 h-5 rounded-full bg-white transition-all duration-200 ${

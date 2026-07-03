@@ -241,13 +241,13 @@ export default function GroupDetail() {
       {/* Checkin Calendar */}
       <div className="glass-card p-4">
         <div className="flex items-center justify-between mb-3">
-          <button onClick={prevMonth} className="p-1 rounded-lg hover:bg-amber/10 text-moon-dim hover:text-moon transition-colors">
+          <button onClick={prevMonth} className="p-1 rounded-lg hover:bg-emerald/10 text-moon-dim hover:text-moon transition-colors">
             <ChevronLeft size={16} />
           </button>
           <span className="text-sm font-medium text-moon">
             {checkinMonth.year}年{checkinMonth.month}月
           </span>
-          <button onClick={nextMonth} className="p-1 rounded-lg hover:bg-amber/10 text-moon-dim hover:text-moon transition-colors">
+          <button onClick={nextMonth} className="p-1 rounded-lg hover:bg-emerald/10 text-moon-dim hover:text-moon transition-colors">
             <ChevronRight size={16} />
           </button>
         </div>
@@ -260,7 +260,7 @@ export default function GroupDetail() {
               key={i}
               className={`text-center text-xs py-1.5 rounded-md ${
                 day.checked
-                  ? 'bg-amber/15 text-amber'
+                  ? 'bg-emerald/15 text-emerald'
                   : 'text-moon-dim'
               }`}
             >
@@ -273,7 +273,7 @@ export default function GroupDetail() {
       {/* New Post */}
       <div className="glass-card p-4">
         <div className="flex gap-3">
-          <div className="w-9 h-9 rounded-full bg-amber/20 flex items-center justify-center text-amber text-sm font-bold shrink-0">
+          <div className="w-9 h-9 rounded-full bg-emerald/20 flex items-center justify-center text-emerald text-sm font-bold shrink-0">
             {group.name[0]}
           </div>
           <div className="flex-1 space-y-3">
@@ -319,7 +319,7 @@ export default function GroupDetail() {
               <div key={post.id} className="glass-card p-4 space-y-3">
                 {/* User info */}
                 <div className="flex items-center gap-3">
-                  <div className="w-9 h-9 rounded-full bg-amber/20 flex items-center justify-center text-amber text-sm font-bold">
+                  <div className="w-9 h-9 rounded-full bg-emerald/20 flex items-center justify-center text-emerald text-sm font-bold">
                     {post.user.username[0].toUpperCase()}
                   </div>
                   <div>
@@ -333,7 +333,7 @@ export default function GroupDetail() {
 
                 {/* Attachment badge */}
                 {post.attachmentType && (
-                  <span className="inline-block text-xs px-2 py-0.5 rounded-full bg-amber/10 text-amber border border-amber/20">
+                  <span className="inline-block text-xs px-2 py-0.5 rounded-full bg-emerald/10 text-emerald border border-emerald/20">
                     {post.attachmentType === 'dub' ? '配音作品' :
                      post.attachmentType === 'writing' ? '手写作品' :
                      post.attachmentType === 'translation' ? '翻译作品' : post.attachmentType}
@@ -341,7 +341,7 @@ export default function GroupDetail() {
                 )}
 
                 {/* Actions */}
-                <div className="flex items-center gap-4 pt-2 border-t border-amber/10">
+                <div className="flex items-center gap-4 pt-2 border-t border-emerald/10">
                   <button
                     onClick={() => handleLike(post.id)}
                     className="flex items-center gap-1 text-xs text-moon-dim hover:text-red-400 transition-colors"
@@ -350,7 +350,7 @@ export default function GroupDetail() {
                   </button>
                   <button
                     onClick={() => setCommentingPostId(commentingPostId === post.id ? null : post.id)}
-                    className="flex items-center gap-1 text-xs text-moon-dim hover:text-amber transition-colors"
+                    className="flex items-center gap-1 text-xs text-moon-dim hover:text-emerald transition-colors"
                   >
                     <MessageCircle size={14} /> {post.commentsCount}
                   </button>
@@ -386,7 +386,7 @@ export default function GroupDetail() {
                 <button
                   onClick={handleLoadMore}
                   disabled={postsLoading}
-                  className="text-sm text-moon-dim hover:text-amber transition-colors disabled:opacity-50"
+                  className="text-sm text-moon-dim hover:text-emerald transition-colors disabled:opacity-50"
                 >
                   {postsLoading ? '加载中...' : '加载更多'}
                 </button>

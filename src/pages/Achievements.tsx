@@ -97,7 +97,7 @@ export default function Achievements() {
   const getRankStyle = (rank: number) => {
     if (rank === 1) return 'text-yellow-400 bg-yellow-400/10';
     if (rank === 2) return 'text-gray-300 bg-gray-300/10';
-    if (rank === 3) return 'text-amber-600 bg-amber-600/10';
+    if (rank === 3) return 'text-emerald-600 bg-emerald-600/10';
     return 'text-moon-dim';
   };
 
@@ -125,28 +125,28 @@ export default function Achievements() {
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         <div className="glass-card p-4 text-center">
           <div className="flex justify-center mb-2">
-            <Calendar2 size={20} className="text-amber" />
+            <Calendar2 size={20} className="text-emerald" />
           </div>
           <p className="text-2xl font-bold text-moon">{stats.totalCheckins}</p>
           <p className="text-xs text-moon-dim">打卡天数</p>
         </div>
         <div className="glass-card p-4 text-center">
           <div className="flex justify-center mb-2">
-            <Mic size={20} className="text-amber" />
+            <Mic size={20} className="text-emerald" />
           </div>
           <p className="text-2xl font-bold text-moon">{stats.totalDubWorks}</p>
           <p className="text-xs text-moon-dim">配音作品</p>
         </div>
         <div className="glass-card p-4 text-center">
           <div className="flex justify-center mb-2">
-            <Languages size={20} className="text-amber" />
+            <Languages size={20} className="text-emerald" />
           </div>
           <p className="text-2xl font-bold text-moon">{stats.totalTranslations}</p>
           <p className="text-xs text-moon-dim">翻译数量</p>
         </div>
         <div className="glass-card p-4 text-center">
           <div className="flex justify-center mb-2">
-            <Flame size={20} className="text-amber" />
+            <Flame size={20} className="text-emerald" />
           </div>
           <p className="text-2xl font-bold text-moon">{stats.streak}</p>
           <p className="text-xs text-moon-dim">连续打卡</p>
@@ -159,8 +159,8 @@ export default function Achievements() {
           onClick={() => setActiveTab('badges')}
           className={`px-5 py-2 rounded-xl text-sm font-medium transition-all duration-200 ${
             activeTab === 'badges'
-              ? 'bg-amber/15 text-amber border border-amber/20'
-              : 'text-moon-dim hover:text-moon hover:bg-amber/5'
+              ? 'bg-emerald/15 text-emerald border border-emerald/20'
+              : 'text-moon-dim hover:text-moon hover:bg-emerald/5'
           }`}
         >
           勋章墙
@@ -169,8 +169,8 @@ export default function Achievements() {
           onClick={() => setActiveTab('leaderboard')}
           className={`px-5 py-2 rounded-xl text-sm font-medium transition-all duration-200 ${
             activeTab === 'leaderboard'
-              ? 'bg-amber/15 text-amber border border-amber/20'
-              : 'text-moon-dim hover:text-moon hover:bg-amber/5'
+              ? 'bg-emerald/15 text-emerald border border-emerald/20'
+              : 'text-moon-dim hover:text-moon hover:bg-emerald/5'
           }`}
         >
           排行榜
@@ -188,8 +188,8 @@ export default function Achievements() {
                 onClick={() => setBadgeCategory(cat.key)}
                 className={`px-4 py-1.5 rounded-xl text-sm font-medium transition-all duration-200 ${
                   badgeCategory === cat.key
-                    ? 'bg-amber/15 text-amber border border-amber/20'
-                    : 'text-moon-dim hover:text-moon hover:bg-amber/5'
+                    ? 'bg-emerald/15 text-emerald border border-emerald/20'
+                    : 'text-moon-dim hover:text-moon hover:bg-emerald/5'
                 }`}
               >
                 {CATEGORY_ICONS[cat.key] && <span className="mr-1">{CATEGORY_ICONS[cat.key]}</span>}
@@ -221,7 +221,7 @@ export default function Achievements() {
                   key={badge.id}
                   className={`glass-card p-4 text-center transition-all duration-300 ${
                     badge.unlocked
-                      ? 'border-amber/30 shadow-[0_0_20px_rgba(240,160,80,0.1)]'
+                      ? 'border-emerald/30 shadow-[0_0_20px_rgba(240,160,80,0.1)]'
                       : 'opacity-40 grayscale'
                   }`}
                 >
@@ -231,7 +231,7 @@ export default function Achievements() {
                   </p>
                   <p className="text-xs text-moon-dim mb-2">{badge.description}</p>
                   {badge.unlocked && badge.unlockedAt && (
-                    <p className="text-xs text-amber">{formatDate(badge.unlockedAt)}</p>
+                    <p className="text-xs text-emerald">{formatDate(badge.unlockedAt)}</p>
                   )}
                   {!badge.unlocked && (
                     <p className="text-xs text-moon-dim/50">未解锁</p>
@@ -254,8 +254,8 @@ export default function Achievements() {
                 onClick={() => setLeaderboardTab(tab.key)}
                 className={`px-4 py-1.5 rounded-xl text-sm font-medium transition-all duration-200 ${
                   leaderboardTab === tab.key
-                    ? 'bg-amber/15 text-amber border border-amber/20'
-                    : 'text-moon-dim hover:text-moon hover:bg-amber/5'
+                    ? 'bg-emerald/15 text-emerald border border-emerald/20'
+                    : 'text-moon-dim hover:text-moon hover:bg-emerald/5'
                 }`}
               >
                 {tab.label}
@@ -286,21 +286,21 @@ export default function Achievements() {
               {currentLeaderboard.map((item) => (
                 <div
                   key={item.rank}
-                  className={`glass-card p-3 flex items-center gap-3 hover:border-amber/30 transition-all duration-200 ${
-                    item.rank <= 3 ? 'border-amber/20' : ''
+                  className={`glass-card p-3 flex items-center gap-3 hover:border-emerald/30 transition-all duration-200 ${
+                    item.rank <= 3 ? 'border-emerald/20' : ''
                   }`}
                 >
                   <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold ${getRankStyle(item.rank)}`}>
                     {getRankBadge(item.rank)}
                   </div>
-                  <div className="w-8 h-8 rounded-full bg-amber/20 flex items-center justify-center text-amber text-xs font-bold">
+                  <div className="w-8 h-8 rounded-full bg-emerald/20 flex items-center justify-center text-emerald text-xs font-bold">
                     {item.user.username[0].toUpperCase()}
                   </div>
                   <span className={`text-sm ${item.rank <= 3 ? 'text-moon font-medium' : 'text-moon-dim'}`}>
                     {item.user.username}
                   </span>
                   <div className="flex-1" />
-                  <span className="text-sm font-bold text-amber">{item.count}</span>
+                  <span className="text-sm font-bold text-emerald">{item.count}</span>
                 </div>
               ))}
             </div>

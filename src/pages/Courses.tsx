@@ -34,7 +34,7 @@ function LanguageTab({
       onClick={onClick}
       className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-medium transition-all duration-300
         ${isActive
-          ? 'bg-amber/15 text-amber border border-amber/30'
+          ? 'bg-emerald/15 text-emerald border border-emerald/30'
           : 'text-moon-dim hover:text-moon border border-transparent hover:bg-white/5'
         }`}
     >
@@ -163,7 +163,7 @@ export default function Courses() {
                     </div>
                     <div className="h-1.5 rounded-full bg-white/10 overflow-hidden">
                       <div
-                        className={`h-full rounded-full transition-all duration-500 ${langColorMap[selectedLang] || 'bg-amber'}`}
+                        className={`h-full rounded-full transition-all duration-500 ${langColorMap[selectedLang] || 'bg-emerald'}`}
                         style={{ width: `${Math.round(course.progress * 100)}%` }}
                       />
                     </div>

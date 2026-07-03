@@ -150,8 +150,8 @@ export default function Write() {
             onClick={() => { setActiveLang(lang); setSelectedChar(null); }}
             className={`px-5 py-2 rounded-xl text-sm font-medium transition-all duration-200 ${
               activeLang === lang
-                ? 'bg-amber/15 text-amber border border-amber/20'
-                : 'text-moon-dim hover:text-moon hover:bg-amber/5'
+                ? 'bg-emerald/15 text-emerald border border-emerald/20'
+                : 'text-moon-dim hover:text-moon hover:bg-emerald/5'
             }`}
           >
             {LANG_CONFIG[lang]?.emoji} {LANG_CONFIG[lang]?.name}
@@ -182,7 +182,7 @@ export default function Write() {
           {/* Canvas */}
           <div
             ref={canvasRef}
-            className="relative w-full aspect-[4/3] rounded-xl bg-night/60 border border-amber/10 cursor-crosshair overflow-hidden touch-none"
+            className="relative w-full aspect-[4/3] rounded-xl bg-night/60 border border-emerald/10 cursor-crosshair overflow-hidden touch-none"
             onPointerDown={handlePointerDown}
             onPointerMove={handlePointerMove}
             onPointerUp={handlePointerUp}
@@ -224,19 +224,19 @@ export default function Write() {
                 type="color"
                 value={penColor}
                 onChange={(e) => { setPenColor(e.target.value); setIsErasing(false); }}
-                className="w-8 h-8 rounded-lg border border-amber/20 bg-transparent cursor-pointer"
+                className="w-8 h-8 rounded-lg border border-emerald/20 bg-transparent cursor-pointer"
               />
             </div>
             <button
               onClick={() => setIsErasing(!isErasing)}
-              className={`p-2 rounded-lg transition-colors ${isErasing ? 'bg-amber/20 text-amber' : 'text-moon-dim hover:text-moon hover:bg-amber/5'}`}
+              className={`p-2 rounded-lg transition-colors ${isErasing ? 'bg-emerald/20 text-emerald' : 'text-moon-dim hover:text-moon hover:bg-emerald/5'}`}
               title="橡皮擦"
             >
               <Eraser size={18} />
             </button>
             <button
               onClick={handleUndo}
-              className="p-2 rounded-lg text-moon-dim hover:text-moon hover:bg-amber/5 transition-colors"
+              className="p-2 rounded-lg text-moon-dim hover:text-moon hover:bg-emerald/5 transition-colors"
               title="撤销"
             >
               <RotateCcw size={18} />
@@ -273,9 +273,9 @@ export default function Write() {
                 <button
                   key={char.id}
                   onClick={() => { setSelectedChar(char); setStrokes([]); setCurrentStroke(null); }}
-                  className="aspect-square rounded-xl glass-card flex flex-col items-center justify-center hover:border-amber/40 transition-all duration-200 group"
+                  className="aspect-square rounded-xl glass-card flex flex-col items-center justify-center hover:border-emerald/40 transition-all duration-200 group"
                 >
-                  <span className="text-2xl font-serif text-moon group-hover:text-amber transition-colors">
+                  <span className="text-2xl font-serif text-moon group-hover:text-emerald transition-colors">
                     {char.character}
                   </span>
                   <span className="text-xs text-moon-dim mt-1">{char.romaji}</span>

@@ -35,11 +35,11 @@ body {
   background: transparent;
 }
 ::-webkit-scrollbar-thumb {
-  background: rgba(240, 160, 80, 0.3);
+  background: rgba(16, 185, 129, 0.3);
   border-radius: 3px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(240, 160, 80, 0.5);
+  background: rgba(16, 185, 129, 0.5);
 }
 
 /* 粒子背景 */
@@ -57,7 +57,7 @@ body {
 .particle {
   position: absolute;
   border-radius: 50%;
-  background: radial-gradient(circle, rgba(240, 160, 80, 0.15), transparent);
+  background: radial-gradient(circle, rgba(16, 185, 129, 0.15), transparent);
   animation: float 6s ease-in-out infinite;
 }
 
@@ -65,18 +65,18 @@ body {
 .glass-card {
   background: rgba(26, 26, 46, 0.6);
   backdrop-filter: blur(12px);
-  border: 1px solid rgba(240, 160, 80, 0.1);
+  border: 1px solid rgba(16, 185, 129, 0.1);
   border-radius: 16px;
   transition: all 0.3s ease;
 }
 .glass-card:hover {
-  border-color: rgba(240, 160, 80, 0.3);
-  box-shadow: 0 0 30px rgba(240, 160, 80, 0.05);
+  border-color: rgba(16, 185, 129, 0.3);
+  box-shadow: 0 0 30px rgba(16, 185, 129, 0.05);
 }
 
 /* 发光按钮 */
 .btn-glow {
-  background: linear-gradient(135deg, #f0a050, #c87830);
+  background: linear-gradient(135deg, #10b981, #059669);
   border: none;
   border-radius: 24px;
   color: #0f0f1a;
@@ -87,7 +87,7 @@ body {
   overflow: hidden;
 }
 .btn-glow:hover {
-  box-shadow: 0 0 25px rgba(240, 160, 80, 0.4);
+  box-shadow: 0 0 25px rgba(16, 185, 129, 0.4);
   transform: translateY(-1px);
 }
 .btn-glow:active {
@@ -115,7 +115,7 @@ body {
 /* 输入框样式 */
 .input-night {
   background: rgba(26, 26, 46, 0.8);
-  border: 1px solid rgba(240, 160, 80, 0.15);
+  border: 1px solid rgba(16, 185, 129, 0.15);
   border-radius: 12px;
   color: #e8e4dc;
   padding: 12px 16px;
@@ -124,8 +124,8 @@ body {
   width: 100%;
 }
 .input-night:focus {
-  border-color: rgba(240, 160, 80, 0.5);
-  box-shadow: 0 0 15px rgba(240, 160, 80, 0.1);
+  border-color: rgba(16, 185, 129, 0.5);
+  box-shadow: 0 0 15px rgba(16, 185, 129, 0.1);
 }
 .input-night::placeholder {
   color: rgba(232, 228, 220, 0.3);
@@ -133,7 +133,7 @@ body {
 
 /* 骨架屏 */
 .skeleton {
-  background: linear-gradient(90deg, rgba(26, 26, 46, 0.8) 25%, rgba(240, 160, 80, 0.05) 50%, rgba(26, 26, 46, 0.8) 75%);
+  background: linear-gradient(90deg, rgba(26, 26, 46, 0.8) 25%, rgba(16, 185, 129, 0.05) 50%, rgba(26, 26, 46, 0.8) 75%);
   background-size: 200% 100%;
   animation: shimmer 2s ease-in-out infinite;
   border-radius: 8px;

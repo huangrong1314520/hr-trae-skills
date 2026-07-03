@@ -15,10 +15,10 @@ export default {
           200: '#0f3460',
           300: '#1a1a3e',
         },
-        amber: {
-          DEFAULT: '#f0a050',
-          light: '#f5c882',
-          dark: '#c87830',
+        emerald: {
+          DEFAULT: '#10b981',
+          light: '#34d399',
+          dark: '#059669',
         },
         moon: {
           DEFAULT: '#e8e4dc',
@@ -47,8 +47,8 @@ export default {
       },
       keyframes: {
         pulseGlow: {
-          '0%, 100%': { boxShadow: '0 0 5px rgba(240, 160, 80, 0.3)' },
-          '50%': { boxShadow: '0 0 20px rgba(240, 160, 80, 0.6)' },
+          '0%, 100%': { boxShadow: '0 0 5px rgba(16, 185, 129, 0.3)' },
+          '50%': { boxShadow: '0 0 20px rgba(16, 185, 129, 0.6)' },
         },
         float: {
           '0%, 100%': { transform: 'translateY(0)' },
