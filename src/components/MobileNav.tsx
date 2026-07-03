@@ -1,11 +1,11 @@
 import { NavLink } from 'react-router-dom';
-import { LayoutDashboard, BookOpen, Mic, Users, User } from 'lucide-react';
+import { Home, Clapperboard, BookOpen, FolderOpen, User } from 'lucide-react';
 
 const tabs = [
-  { to: '/', icon: LayoutDashboard, label: '首页' },
-  { to: '/courses', icon: BookOpen, label: '课程' },
-  { to: '/dub', icon: Mic, label: '配音' },
-  { to: '/groups', icon: Users, label: '群组' },
+  { to: '/', icon: Home, label: '首页' },
+  { to: '/create/video', icon: Clapperboard, label: '创作' },
+  { to: '/scenes', icon: BookOpen, label: '场景' },
+  { to: '/works', icon: FolderOpen, label: '作品' },
   { to: '/profile', icon: User, label: '我的' },
 ];
 

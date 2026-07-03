@@ -1,203 +1,208 @@
 import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
-import { useAuthStore } from '@/hooks/useStore';
-import { api } from '@/utils/api';
-import { Flame, Clock, BookOpen, Star, Mic, Languages, Pencil, Heart } from 'lucide-react';
+import { api, LANG_CONFIG, type SceneCourse } from '@/utils/api';
+import { Clapperboard, Languages, Pencil, ArrowRight, Sparkles, Calendar } from 'lucide-react';
 
-interface Stats {
-  totalCheckins: number;
-  totalDubWorks: number;
-  totalTranslations: number;
-  streak: number;
-}
-
-interface Post {
-  id: number;
-  content: string;
-  type: string;
-  username: string;
-  createdAt: string;
-  likes: number;
-  liked: boolean;
-}
-
-function timeAgo(dateStr: string): string {
-  const diff = Math.floor((Date.now() - new Date(dateStr).getTime()) / 1000);
-  if (diff < 60) return '刚刚';
-  if (diff < 3600) return `${Math.floor(diff / 60)}分钟前`;
-  if (diff < 86400) return `${Math.floor(diff / 3600)}小时前`;
-  if (diff < 604800) return `${Math.floor(diff / 86400)}天前`;
-  return new Date(dateStr).toLocaleDateString('zh-CN');
-}
-
-const TYPE_BADGE: Record<string, { label: string; cls: string }> = {
-  dub: { label: '配音', cls: 'text-sakura' },
-  translate: { label: '翻译', cls: 'text-celadon' },
-  write: { label: '手写', cls: 'text-teak' },
-  checkin: { label: '打卡', cls: 'text-indigo-light' },
-};
-
-const RECOMMENDATIONS = [
-  { title: '配音跟读', desc: '模仿原声，提升口语', icon: Mic, color: 'text-sakura', bg: 'from-sakura/20 to-sakura/5', to: '/dub' },
-  { title: '翻译练习', desc: '中英互译，学以致用', icon: Languages, color: 'text-celadon', bg: 'from-celadon/20 to-celadon/5', to: '/translate' },
-  { title: '手写练习', desc: '一笔一画，书写美好', icon: Pencil, color: 'text-teak', bg: 'from-teak/20 to-teak/5', to: '/write' },
+// 创作工坊入口配置
+const WORKSHOPS = [
+  {
+    title: '视频创作',
+    desc: '从素材库选择或上传视频，中日字幕+语法分析',
+    icon: Clapperboard,
+    to: '/create/video',
+  },
+  {
+    title: '翻译练习',
+    desc: '日语翻译练习，提升理解力',
+    icon: Languages,
+    to: '/create/translate',
+  },
+  {
+    title: '手写练习',
+    desc: '假名书写练习，一笔一画',
+    icon: Pencil,
+    to: '/create/write',
+  },
 ];
 
 export default function Home() {
-  const { isAuthenticated } = useAuthStore();
-  const [stats, setStats] = useState<Stats | null>(null);
-  const [statsLoading, setStatsLoading] = useState(true);
-  const [posts, setPosts] = useState<Post[]>([]);
-  const [postsLoading, setPostsLoading] = useState(true);
+  const [scenes, setScenes] = useState<SceneCourse[]>([]);
+  const [loading, setLoading] = useState(true);
 
+  // 获取场景课程列表（首页无需登录检查，直接展示）
   useEffect(() => {
-    if (!isAuthenticated()) {
-      setStatsLoading(false);
-      return;
-    }
-    api.get<{ success: boolean; data: Stats }>('/achievements/stats')
-      .then((res) => setStats(res.data))
-      .catch(() => {})
-      .finally(() => setStatsLoading(false));
-  }, []);
-
-  useEffect(() => {
-    if (!isAuthenticated()) {
-      setPostsLoading(false);
-      return;
-    }
-    api.get<{ success: boolean; data: { language: string }[] }>('/groups')
-      .then(async (res) => {
-        const groups = res.data;
-        if (groups.length > 0) {
-          const postsRes = await api.get<{ success: boolean; data: { posts: Post[] } }>(
-            `/groups/${groups[0].language}/posts?page=1`,
-          );
-          setPosts(postsRes.data.posts);
-        }
+    api
+      .get<{ success: boolean; data: SceneCourse[] }>('/scenes')
+      .then((res) => {
+        if (res.success) setScenes(res.data || []);
       })
-      .catch(() => {})
-      .finally(() => setPostsLoading(false));
+      .catch(() => setScenes([]))
+      .finally(() => setLoading(false));
   }, []);
 
-  const totalScore = stats
-    ? stats.totalCheckins * 10 + stats.totalDubWorks * 5 + stats.totalTranslations * 5
-    : 0;
-
-  const statItems = [
-    { label: '今日学习时长', value: stats ? `${stats.totalDubWorks + stats.totalTranslations}次` : '0', icon: Clock },
-    { label: '完成课程数', value: stats ? stats.totalCheckins : 0, icon: BookOpen },
-    { label: '连续打卡', value: stats ? `${stats.streak}天` : '0', icon: Flame },
-    { label: '总积分', value: totalScore, icon: Star },
-  ];
+  // 今日推荐：取第一个场景
+  const todayScene = scenes[0];
+  // 预览：前 2 个场景课程
+  const previewScenes = scenes.slice(0, 2);
 
   return (
-    <div className="page-enter space-y-8">
-      {/* Stats Overview */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        {statItems.map((item, i) => (
+    <div className="page-enter space-y-10">
+      {/* 顶部欢迎区 */}
+      <motion.section
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5 }}
+        className="space-y-3"
+      >
+        <h1 className="font-serif text-3xl md:text-4xl font-bold text-moon">
+          言夜 <span className="text-emerald">-</span> 日语创作工坊
+        </h1>
+        <p className="text-moon-dim text-base md:text-lg">
+          用碎片时间，创作你的日语世界
+        </p>
+      </motion.section>
+
+      {/* 今日场景推荐 */}
+      <section className="space-y-4">
+        <div className="flex items-center gap-2">
+          <Sparkles className="w-5 h-5 text-emerald" />
+          <h2 className="text-xl font-semibold text-moon">今日场景推荐</h2>
+        </div>
+        {loading ? (
+          <div className="glass-card p-6 space-y-4">
+            <div className="skeleton h-8 w-2/3" />
+            <div className="skeleton h-4 w-full" />
+            <div className="skeleton h-4 w-3/4" />
+          </div>
+        ) : todayScene ? (
           <motion.div
-            key={item.label}
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: i * 0.1, duration: 0.4 }}
-            className="glass-card p-5 flex flex-col items-center gap-2"
+            transition={{ delay: 0.1, duration: 0.4 }}
           >
-            <item.icon className="w-6 h-6 text-emerald" />
-            {statsLoading ? (
-              <div className="skeleton h-8 w-16 rounded" />
-            ) : (
-              <span className="text-2xl font-bold text-moon">{item.value}</span>
-            )}
-            <span className="text-xs text-moon-dim">{item.label}</span>
+            <Link
+              to={`/scenes/${todayScene.id}`}
+              className="glass-card p-6 block hover:border-emerald/40 group"
+            >
+              <div className="flex items-start gap-5">
+                <div className="text-5xl md:text-6xl shrink-0 select-none">
+                  {todayScene.icon}
+                </div>
+                <div className="flex-1 min-w-0 space-y-2">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <h3 className="text-xl md:text-2xl font-bold text-moon group-hover:text-emerald transition-colors">
+                      {todayScene.title}
+                    </h3>
+                    <span className="text-xs px-2 py-0.5 rounded-full bg-emerald/10 text-emerald border border-emerald/20">
+                      {todayScene.level}
+                    </span>
+                    <span className="text-xs px-2 py-0.5 rounded-full bg-white/5 text-moon-dim flex items-center gap-1">
+                      <Calendar className="w-3 h-3" /> Day {todayScene.day}
+                    </span>
+                    {LANG_CONFIG[todayScene.lang] && (
+                      <span className="text-xs px-2 py-0.5 rounded-full bg-white/5 text-moon-dim">
+                        {LANG_CONFIG[todayScene.lang].emoji} {LANG_CONFIG[todayScene.lang].name}
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-sm text-moon-dim line-clamp-2">
+                    {todayScene.description}
+                  </p>
+                  <span className="inline-flex items-center gap-1 text-sm text-emerald">
+                    开始学习 <ArrowRight className="w-4 h-4" />
+                  </span>
+                </div>
+              </div>
+            </Link>
           </motion.div>
-        ))}
-      </div>
+        ) : (
+          <div className="glass-card p-6 text-center text-moon-dim">暂无推荐场景</div>
+        )}
+      </section>
 
-      {/* Daily Recommendations */}
-      <section>
-        <h2 className="text-xl font-semibold text-moon mb-1">今日推荐</h2>
-        <p className="text-sm text-moon-dim mb-4">精选练习，助你每日进步</p>
-        <div className="flex gap-4 overflow-x-auto pb-2 -mx-1 px-1">
-          {RECOMMENDATIONS.map((rec, i) => (
+      {/* 创作工坊入口 */}
+      <section className="space-y-4">
+        <h2 className="text-xl font-semibold text-moon">创作工坊</h2>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          {WORKSHOPS.map((w, i) => (
             <motion.div
-              key={rec.title}
+              key={w.title}
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: i * 0.1, duration: 0.4 }}
-              className="min-w-[200px] flex-shrink-0"
+              transition={{ delay: 0.15 + i * 0.1, duration: 0.4 }}
             >
               <Link
-                to={rec.to}
-                className="glass-card p-5 flex flex-col items-center gap-3 h-full hover:border-emerald/30"
+                to={w.to}
+                className="glass-card p-6 h-full flex flex-col gap-3 hover:border-emerald/40 group"
               >
-                <div
-                  className={`w-14 h-14 rounded-full bg-gradient-to-br ${rec.bg} flex items-center justify-center`}
-                >
-                  <rec.icon className={`w-7 h-7 ${rec.color}`} />
+                <div className="w-12 h-12 rounded-xl bg-emerald/10 flex items-center justify-center">
+                  <w.icon className="w-6 h-6 text-emerald" />
                 </div>
-                <span className="font-semibold text-moon">{rec.title}</span>
-                <span className="text-xs text-moon-dim text-center">{rec.desc}</span>
-                <span className={`text-xs px-2 py-0.5 rounded-full bg-white/5 ${rec.color}`}>推荐</span>
+                <h3 className="text-lg font-semibold text-moon group-hover:text-emerald transition-colors">
+                  {w.title}
+                </h3>
+                <p className="text-sm text-moon-dim">{w.desc}</p>
               </Link>
             </motion.div>
           ))}
         </div>
       </section>
 
-      {/* Community Feed */}
-      <section>
-        <h2 className="text-xl font-semibold text-moon mb-4">社区动态</h2>
-        {!isAuthenticated() ? (
-          <div className="glass-card p-8 text-center">
-            <p className="text-moon-dim mb-3">登录后查看社区动态</p>
-            <Link to="/login" className="btn-glow px-6 py-2 inline-block rounded-full text-sm">
-              去登录
-            </Link>
-          </div>
-        ) : postsLoading ? (
-          <div className="space-y-3">
-            {Array.from({ length: 3 }).map((_, i) => (
-              <div key={i} className="glass-card p-4 space-y-3">
-                <div className="flex items-center gap-3">
-                  <div className="skeleton w-9 h-9 rounded-full" />
-                  <div className="skeleton h-4 w-20 rounded" />
-                  <div className="skeleton h-3 w-12 rounded ml-auto" />
-                </div>
-                <div className="skeleton h-4 w-full rounded" />
-                <div className="skeleton h-4 w-3/4 rounded" />
+      {/* 场景课程预览 */}
+      <section className="space-y-4">
+        <div className="flex items-center justify-between">
+          <h2 className="text-xl font-semibold text-moon">场景课程</h2>
+          <Link
+            to="/scenes"
+            className="text-sm text-emerald hover:text-emerald/80 flex items-center gap-1 transition-colors"
+          >
+            查看全部 <ArrowRight className="w-4 h-4" />
+          </Link>
+        </div>
+        {loading ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {Array.from({ length: 2 }).map((_, i) => (
+              <div key={i} className="glass-card p-5 space-y-3">
+                <div className="skeleton h-6 w-1/2" />
+                <div className="skeleton h-4 w-full" />
               </div>
             ))}
           </div>
-        ) : posts.length === 0 ? (
-          <div className="glass-card p-8 text-center text-moon-dim">暂无动态，快去社区看看吧~</div>
-        ) : (
-          <div className="space-y-3">
-            {posts.map((post) => (
-              <div key={post.id} className="glass-card p-4">
-                <div className="flex items-center gap-3 mb-3">
-                  <div className="w-9 h-9 rounded-full bg-emerald/20 flex items-center justify-center text-emerald text-sm font-semibold">
-                    {post.username?.[0]?.toUpperCase() || '?'}
+        ) : previewScenes.length > 0 ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {previewScenes.map((scene, i) => (
+              <motion.div
+                key={scene.id}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.2 + i * 0.1, duration: 0.4 }}
+              >
+                <Link
+                  to={`/scenes/${scene.id}`}
+                  className="glass-card p-5 flex items-center gap-4 hover:border-emerald/40 group"
+                >
+                  <div className="text-3xl shrink-0 select-none">{scene.icon}</div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <h3 className="font-semibold text-moon group-hover:text-emerald transition-colors">
+                        {scene.title}
+                      </h3>
+                      <span className="text-xs px-2 py-0.5 rounded-full bg-emerald/10 text-emerald border border-emerald/20">
+                        {scene.level}
+                      </span>
+                    </div>
+                    <p className="text-xs text-moon-dim line-clamp-1 mt-1">
+                      {scene.description}
+                    </p>
                   </div>
-                  <span className="text-sm font-medium text-moon">{post.username}</span>
-                  <span className="text-xs text-moon-dim ml-auto">{timeAgo(post.createdAt)}</span>
-                </div>
-                <p className="text-sm text-moon-dim mb-3">{post.content}</p>
-                <div className="flex items-center gap-3">
-                  {post.type && TYPE_BADGE[post.type] && (
-                    <span className={`text-xs px-2 py-0.5 rounded-full bg-white/5 ${TYPE_BADGE[post.type].cls}`}>
-                      {TYPE_BADGE[post.type].label}
-                    </span>
-                  )}
-                  <button className="flex items-center gap-1 text-xs text-moon-dim hover:text-emerald transition-colors ml-auto">
-                    <Heart className={`w-4 h-4 ${post.liked ? 'fill-emerald text-emerald' : ''}`} />
-                    {post.likes}
-                  </button>
-                </div>
-              </div>
+                  <ArrowRight className="w-4 h-4 text-moon-dim group-hover:text-emerald transition-colors shrink-0" />
+                </Link>
+              </motion.div>
             ))}
           </div>
+        ) : (
+          <div className="glass-card p-6 text-center text-moon-dim">暂无场景课程</div>
         )}
       </section>
     </div>

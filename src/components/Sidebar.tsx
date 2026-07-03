@@ -1,30 +1,19 @@
-import { NavLink, useNavigate } from 'react-router-dom';
-import { useAuthStore, useAppStore } from '@/hooks/useStore';
+import { NavLink } from 'react-router-dom';
+import { useAppStore } from '@/hooks/useStore';
 import {
-  LayoutDashboard, BookOpen, Mic, Pencil, Languages,
-  Users, Trophy, User, LogOut, ChevronLeft, ChevronRight, Menu
+  Home, Clapperboard, BookOpen, FolderOpen, User, ChevronLeft, ChevronRight
 } from 'lucide-react';
 
 const navItems = [
-  { to: '/', icon: LayoutDashboard, label: '仪表盘' },
-  { to: '/courses', icon: BookOpen, label: '课程中心' },
-  { to: '/dub', icon: Mic, label: '配音工坊' },
-  { to: '/write', icon: Pencil, label: '手写练习' },
-  { to: '/translate', icon: Languages, label: '翻译卡片' },
-  { to: '/groups', icon: Users, label: '语种群组' },
-  { to: '/achievements', icon: Trophy, label: '成就殿堂' },
+  { to: '/', icon: Home, label: '首页' },
+  { to: '/create/video', icon: Clapperboard, label: '视频创作' },
+  { to: '/scenes', icon: BookOpen, label: '场景课程' },
+  { to: '/works', icon: FolderOpen, label: '我的作品' },
   { to: '/profile', icon: User, label: '个人中心' },
 ];
 
 export default function Sidebar() {
   const { sidebarCollapsed, toggleSidebar } = useAppStore();
-  const { user, logout } = useAuthStore();
-  const navigate = useNavigate();
-
-  const handleLogout = () => {
-    logout();
-    navigate('/login');
-  };
 
   return (
     <aside
@@ -75,36 +64,26 @@ export default function Sidebar() {
         ))}
       </nav>
 
-      {/* User section */}
-      <div className="p-3 border-t border-emerald/10">
-        {user ? (
-          <div className={`flex items-center gap-3 ${sidebarCollapsed ? 'justify-center' : ''}`}>
-            <div className="w-8 h-8 rounded-full bg-emerald/20 flex items-center justify-center text-emerald text-sm font-bold shrink-0">
-              {user.username[0].toUpperCase()}
-            </div>
-            {!sidebarCollapsed && (
-              <div className="flex-1 min-w-0">
-                <p className="text-sm text-moon truncate">{user.username}</p>
-                <p className="text-xs text-moon-dim truncate">{user.email}</p>
-              </div>
-            )}
-            <button
-              onClick={handleLogout}
-              className="p-1.5 rounded-lg hover:bg-red-500/10 text-moon-dim hover:text-red-400 transition-colors"
-              title="退出登录"
-            >
-              <LogOut size={16} />
-            </button>
-          </div>
-        ) : (
-          <button
-            onClick={() => navigate('/login')}
-            className="w-full py-2 px-3 btn-glow text-sm"
-          >
-            {sidebarCollapsed ? '登' : '登录'}
-          </button>
-        )}
-      </div>
+      {/* 创作工坊快捷入口 */}
+      {!sidebarCollapsed && (
+        <div className="p-3 border-t border-emerald/10 space-y-1">
+          <p className="text-xs text-moon-dim px-3 mb-2">创作工坊</p>
+          <NavLink to="/create/translate" className={({ isActive }) =>
+            `flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors
+            ${isActive ? 'text-emerald' : 'text-moon-dim hover:text-moon hover:bg-emerald/5'}`
+          }>
+            <span className="w-5 text-center">译</span>
+            <span>翻译练习</span>
+          </NavLink>
+          <NavLink to="/create/write" className={({ isActive }) =>
+            `flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors
+            ${isActive ? 'text-emerald' : 'text-moon-dim hover:text-moon hover:bg-emerald/5'}`
+          }>
+            <span className="w-5 text-center">写</span>
+            <span>手写练习</span>
+          </NavLink>
+        </div>
+      )}
     </aside>
   );
 }
