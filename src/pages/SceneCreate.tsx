@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useParams, useNavigate } from 'react-router-dom';
 import { api, type SceneCourse } from '@/utils/api';
@@ -17,6 +17,15 @@ import {
   Bookmark,
   ArrowLeft,
   RefreshCw,
+  Play,
+  Pause,
+  SkipBack,
+  SkipForward,
+  Maximize2,
+  Film,
+  AlignLeft,
+  X,
+  Settings,
 } from 'lucide-react';
 
 export default function SceneCreate() {
@@ -31,6 +40,17 @@ export default function SceneCreate() {
   const [copied, setCopied] = useState(false);
   const [speakingWord, setSpeakingWord] = useState<string | null>(null);
   const [speakingExample, setSpeakingExample] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<'post' | 'video'>('post');
+
+  // 视频模式状态
+  const [videoFullscreen, setVideoFullscreen] = useState(false);
+  const [videoPlaying, setVideoPlaying] = useState(false);
+  const [videoIndex, setVideoIndex] = useState(0);
+  const [videoTheme, setVideoTheme] = useState(0);
+  const [videoSpeed, setVideoSpeed] = useState(1);
+  const [videoShowExample, setVideoShowExample] = useState(true);
+  const videoTimerRef = useRef<number | null>(null);
+  const videoPlayingRef = useRef(false);
 
   useEffect(() => {
     api
@@ -114,6 +134,198 @@ ${sceneData.grammars.map((g, i) => `${i + 1}. ${g.pattern}\n   📌 ${g.explanat
     await speakJa(example).finally(() => setSpeakingExample(null));
   }
 
+  /* ========== 视频模式逻辑 ========== */
+  const videoThemes = [
+    {
+      name: '清新粉紫',
+      bg: 'bg-gradient-to-br from-pink-100 via-purple-50 to-indigo-100',
+      text: 'text-gray-800',
+      accent: 'text-pink-500',
+      subText: 'text-gray-500',
+      cardBg: 'bg-white/70 backdrop-blur-sm',
+      progress: 'bg-pink-400',
+    },
+    {
+      name: '深夜蓝',
+      bg: 'bg-gradient-to-br from-slate-900 via-indigo-950 to-slate-900',
+      text: 'text-white',
+      accent: 'text-cyan-400',
+      subText: 'text-slate-400',
+      cardBg: 'bg-white/10 backdrop-blur-md',
+      progress: 'bg-cyan-400',
+    },
+    {
+      name: '抹茶绿',
+      bg: 'bg-gradient-to-br from-emerald-50 via-green-100 to-teal-50',
+      text: 'text-gray-800',
+      accent: 'text-emerald-600',
+      subText: 'text-gray-500',
+      cardBg: 'bg-white/80 backdrop-blur-sm',
+      progress: 'bg-emerald-500',
+    },
+    {
+      name: '温暖橙',
+      bg: 'bg-gradient-to-br from-orange-50 via-amber-100 to-yellow-50',
+      text: 'text-gray-800',
+      accent: 'text-orange-500',
+      subText: 'text-gray-500',
+      cardBg: 'bg-white/70 backdrop-blur-sm',
+      progress: 'bg-orange-400',
+    },
+  ];
+
+  // 构建视频播放列表：单词 + 例句交替
+  function buildVideoPlaylist() {
+    if (!scene) return [];
+    const list: { type: 'word' | 'example'; text: string; reading?: string; meaning?: string; trans?: string; index: number; total: number }[] = [];
+    scene.words.forEach((word, i) => {
+      list.push({
+        type: 'word',
+        text: word.word,
+        reading: word.reading,
+        meaning: word.meaning,
+        index: i,
+        total: scene.words.length,
+      });
+      if (word.example && videoShowExample) {
+        list.push({
+          type: 'example',
+          text: word.example,
+          trans: word.exampleTrans,
+          index: i,
+          total: scene.words.length,
+        });
+      }
+    });
+    return list;
+  }
+
+  const videoPlaylist = buildVideoPlaylist();
+  const currentVideoItem = videoPlaylist[videoIndex];
+
+  // 播放下一个
+  function videoNext() {
+    if (videoIndex < videoPlaylist.length - 1) {
+      setVideoIndex(videoIndex + 1);
+    } else {
+      // 播放完毕，停止
+      videoStop();
+    }
+  }
+
+  // 播放上一个
+  function videoPrev() {
+    if (videoIndex > 0) {
+      setVideoIndex(videoIndex - 1);
+    }
+  }
+
+  // 停止播放
+  function videoStop() {
+    videoPlayingRef.current = false;
+    setVideoPlaying(false);
+    if (videoTimerRef.current) {
+      clearTimeout(videoTimerRef.current);
+      videoTimerRef.current = null;
+    }
+    try {
+      if ('speechSynthesis' in window) window.speechSynthesis.cancel();
+    } catch { /* ignore */ }
+  }
+
+  // 开始/继续播放
+  async function videoPlay() {
+    if (!scene || videoPlaylist.length === 0) return;
+    
+    videoPlayingRef.current = true;
+    setVideoPlaying(true);
+    await playCurrentVideoItem();
+  }
+
+  // 播放当前条目
+  async function playCurrentVideoItem() {
+    if (!videoPlayingRef.current) return;
+    const item = videoPlaylist[videoIndex];
+    if (!item) {
+      videoStop();
+      return;
+    }
+
+    if (item.type === 'word') {
+      setSpeakingWord(item.text);
+    } else {
+      setSpeakingExample(item.text);
+    }
+
+    try {
+      await speakJa(item.text);
+    } catch {
+      // 播放失败也继续
+    }
+
+    if (item.type === 'word') {
+      setSpeakingWord(null);
+    } else {
+      setSpeakingExample(null);
+    }
+
+    if (!videoPlayingRef.current) return;
+
+    // 根据速度调整间隔
+    const delay = item.type === 'word' ? 1200 / videoSpeed : 1800 / videoSpeed;
+    videoTimerRef.current = window.setTimeout(() => {
+      if (videoPlayingRef.current) {
+        videoNext();
+        playCurrentVideoItem();
+      }
+    }, delay);
+  }
+
+  // 切换播放/暂停
+  function toggleVideoPlay() {
+    if (videoPlaying) {
+      videoStop();
+    } else {
+      videoPlay();
+    }
+  }
+
+  // 重置到开头
+  function videoReset() {
+    videoStop();
+    setVideoIndex(0);
+  }
+
+  // 清理
+  useEffect(() => {
+    return () => {
+      videoStop();
+    };
+  }, []);
+
+  // 当 index 变化时，如果正在播放，自动播放新条目
+  useEffect(() => {
+    if (videoPlaying && videoPlayingRef.current) {
+      // 取消当前的timer
+      if (videoTimerRef.current) {
+        clearTimeout(videoTimerRef.current);
+        videoTimerRef.current = null;
+      }
+      playCurrentVideoItem();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [videoIndex]);
+
+  // 全屏
+  function toggleFullscreen() {
+    if (!videoFullscreen) {
+      setVideoFullscreen(true);
+    } else {
+      setVideoFullscreen(false);
+      videoStop();
+    }
+  }
+
   async function copyPost() {
     const fullPost = `${postTitle}\n\n${postContent}\n\n${hashtags.join(' ')}`;
     await navigator.clipboard.writeText(fullPost);
@@ -145,12 +357,178 @@ ${sceneData.grammars.map((g, i) => `${i + 1}. ${g.pattern}\n   📌 ${g.explanat
   }
 
   const currentTemplate = templates[selectedTemplate];
+  const currentVideoTheme = videoThemes[videoTheme];
+
+  // 视频全屏模式
+  if (videoFullscreen && scene) {
+    return (
+      <div
+        className={`fixed inset-0 z-50 flex items-center justify-center ${currentVideoTheme.bg}`}
+      >
+        {/* 关闭按钮 */}
+        <button
+          onClick={toggleFullscreen}
+          className="absolute top-4 right-4 w-10 h-10 rounded-full bg-black/20 backdrop-blur-sm flex items-center justify-center text-white hover:bg-black/40 transition-colors"
+        >
+          <X size={20} />
+        </button>
+
+        {/* 进度条 */}
+        <div className="absolute top-0 left-0 right-0 h-1 bg-black/10">
+          <div
+            className={`h-full ${currentVideoTheme.progress} transition-all duration-300`}
+            style={{ width: `${((videoIndex + 1) / videoPlaylist.length) * 100}%` }}
+          />
+        </div>
+
+        {/* 视频内容区 - 9:16 竖屏比例 */}
+        <div className="relative w-full max-w-md aspect-[9/16] mx-4">
+          <AnimatePresence mode="wait">
+            {currentVideoItem && (
+              <motion.div
+                key={videoIndex}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -20 }}
+                transition={{ duration: 0.4 }}
+                className={`absolute inset-0 flex flex-col items-center justify-center p-8 ${currentVideoTheme.cardBg} rounded-3xl shadow-2xl`}
+              >
+                {/* 场景标题 */}
+                <div className={`text-sm mb-8 ${currentVideoTheme.subText}`}>
+                  {scene.icon} {scene.title} · {currentVideoItem.index + 1}/{currentVideoItem.total}
+                </div>
+
+                {currentVideoItem.type === 'word' ? (
+                  <>
+                    {/* 单词标签 */}
+                    <div className={`px-4 py-1 rounded-full text-sm mb-4 ${currentVideoTheme.accent} bg-current/10`}>
+                      单词
+                    </div>
+                    {/* 日语单词 */}
+                    <p className={`font-serif text-5xl font-bold mb-3 ${currentVideoTheme.text} text-center`}>
+                      {currentVideoItem.text}
+                    </p>
+                    {/* 注音 */}
+                    {currentVideoItem.reading && (
+                      <p className={`text-lg mb-4 ${currentVideoTheme.accent}`}>
+                        {currentVideoItem.reading}
+                      </p>
+                    )}
+                    {/* 释义 */}
+                    {currentVideoItem.meaning && (
+                      <p className={`text-xl ${currentVideoTheme.subText} text-center`}>
+                        {currentVideoItem.meaning}
+                      </p>
+                    )}
+                    {/* 发音动画 */}
+                    <motion.div
+                      animate={speakingWord === currentVideoItem.text ? { scale: [1, 1.2, 1] } : {}}
+                      transition={{ duration: 0.5, repeat: speakingWord === currentVideoItem.text ? Infinity : 0 }}
+                      className={`mt-8 w-16 h-16 rounded-full flex items-center justify-center ${currentVideoTheme.accent} bg-current/10`}
+                    >
+                      <Volume2 size={28} />
+                    </motion.div>
+                  </>
+                ) : (
+                  <>
+                    {/* 例句标签 */}
+                    <div className={`px-4 py-1 rounded-full text-sm mb-4 ${currentVideoTheme.accent} bg-current/10`}>
+                      例句
+                    </div>
+                    {/* 例句 */}
+                    <p className={`font-serif text-2xl leading-relaxed mb-4 ${currentVideoTheme.text} text-center`}>
+                      {currentVideoItem.text}
+                    </p>
+                    {/* 翻译 */}
+                    {currentVideoItem.trans && (
+                      <p className={`text-base ${currentVideoTheme.subText} text-center`}>
+                        {currentVideoItem.trans}
+                      </p>
+                    )}
+                    {/* 发音动画 */}
+                    <motion.div
+                      animate={speakingExample === currentVideoItem.text ? { scale: [1, 1.2, 1] } : {}}
+                      transition={{ duration: 0.5, repeat: speakingExample === currentVideoItem.text ? Infinity : 0 }}
+                      className={`mt-8 w-16 h-16 rounded-full flex items-center justify-center ${currentVideoTheme.accent} bg-current/10`}
+                    >
+                      <Volume2 size={28} />
+                    </motion.div>
+                  </>
+                )}
+
+                {/* 底部水印 */}
+                <div className={`absolute bottom-6 text-xs ${currentVideoTheme.subText} opacity-50`}>
+                  🌸 日语学习打卡
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
+
+        {/* 底部控制栏 */}
+        <div className="absolute bottom-8 left-1/2 -translate-x-1/2 flex items-center gap-4">
+          <button
+            onClick={videoPrev}
+            disabled={videoIndex === 0}
+            className={`w-12 h-12 rounded-full flex items-center justify-center transition-all ${
+              videoIndex === 0
+                ? 'bg-black/10 text-black/30 cursor-not-allowed'
+                : 'bg-black/20 text-white hover:bg-black/40'
+            }`}
+          >
+            <SkipBack size={20} />
+          </button>
+          <button
+            onClick={toggleVideoPlay}
+            className={`w-16 h-16 rounded-full flex items-center justify-center text-white shadow-lg transition-all ${
+              videoPlaying ? 'bg-red-500 hover:bg-red-600' : 'bg-emerald-500 hover:bg-emerald-600'
+            }`}
+          >
+            {videoPlaying ? <Pause size={24} /> : <Play size={24} className="ml-1" />}
+          </button>
+          <button
+            onClick={videoNext}
+            disabled={videoIndex >= videoPlaylist.length - 1}
+            className={`w-12 h-12 rounded-full flex items-center justify-center transition-all ${
+              videoIndex >= videoPlaylist.length - 1
+                ? 'bg-black/10 text-black/30 cursor-not-allowed'
+                : 'bg-black/20 text-white hover:bg-black/40'
+            }`}
+          >
+            <SkipForward size={20} />
+          </button>
+        </div>
+
+        {/* 左下角速度 */}
+        <div className="absolute bottom-8 left-8 flex items-center gap-2">
+          <Settings size={16} className="text-white/50" />
+          <select
+            value={videoSpeed}
+            onChange={(e) => setVideoSpeed(Number(e.target.value))}
+            className="bg-black/20 text-white text-sm px-2 py-1 rounded border-0 outline-none cursor-pointer"
+          >
+            <option value={0.5}>0.5x</option>
+            <option value={0.75}>0.75x</option>
+            <option value={1}>1x</option>
+            <option value={1.25}>1.25x</option>
+            <option value={1.5}>1.5x</option>
+            <option value={2}>2x</option>
+          </select>
+        </div>
+
+        {/* 右下角进度 */}
+        <div className="absolute bottom-8 right-8 text-white/50 text-sm">
+          {videoIndex + 1} / {videoPlaylist.length}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-dark">
       <div className="max-w-4xl mx-auto px-4 py-6">
         {/* 顶部导航 */}
-        <div className="flex items-center justify-between mb-6">
+        <div className="flex items-center justify-between mb-4">
           <button
             onClick={() => navigate(`/scenes/${id}`)}
             className="flex items-center gap-2 text-moon-dim hover:text-emerald transition-colors"
@@ -165,7 +543,35 @@ ${sceneData.grammars.map((g, i) => `${i + 1}. ${g.pattern}\n   📌 ${g.explanat
           <div className="w-20" />
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Tab 切换 */}
+        <div className="flex gap-2 mb-6 p-1 bg-white/5 rounded-xl w-fit mx-auto">
+          <button
+            onClick={() => setActiveTab('post')}
+            className={`flex items-center gap-2 px-5 py-2 rounded-lg text-sm font-medium transition-all ${
+              activeTab === 'post'
+                ? 'bg-emerald/15 text-emerald'
+                : 'text-moon-dim hover:text-moon'
+            }`}
+          >
+            <AlignLeft size={16} />
+            图文帖子
+          </button>
+          <button
+            onClick={() => setActiveTab('video')}
+            className={`flex items-center gap-2 px-5 py-2 rounded-lg text-sm font-medium transition-all ${
+              activeTab === 'video'
+                ? 'bg-emerald/15 text-emerald'
+                : 'text-moon-dim hover:text-moon'
+            }`}
+          >
+            <Film size={16} />
+            视频模式
+          </button>
+        </div>
+
+        {/* 图文帖子 Tab */}
+        {activeTab === 'post' && (
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* 左侧：内容编辑区 */}
           <div className="space-y-4">
             {/* 模板选择 */}
@@ -386,7 +792,268 @@ ${sceneData.grammars.map((g, i) => `${i + 1}. ${g.pattern}\n   📌 ${g.explanat
               </div>
             </div>
           </div>
-        </div>
+          </div>
+        )}
+
+        {/* 视频模式 Tab */}
+        {activeTab === 'video' && (
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {/* 左侧：设置区 */}
+            <div className="space-y-4">
+              {/* 主题选择 */}
+              <div className="glass-card p-4">
+                <div className="flex items-center gap-2 mb-3">
+                  <Sparkles className="text-emerald" size={18} />
+                  <span className="font-medium text-moon">选择主题</span>
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  {videoThemes.map((theme, i) => (
+                    <button
+                      key={i}
+                      onClick={() => setVideoTheme(i)}
+                      className={`p-3 rounded-lg border-2 transition-all ${
+                        videoTheme === i
+                          ? 'border-emerald shadow-lg shadow-emerald/20'
+                          : 'border-white/10 hover:border-white/20'
+                      }`}
+                    >
+                      <div className={`w-full h-12 rounded mb-2 ${theme.bg}`} />
+                      <span className="text-xs text-moon-dim">{theme.name}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* 播放设置 */}
+              <div className="glass-card p-4">
+                <div className="flex items-center gap-2 mb-3">
+                  <Settings className="text-emerald" size={18} />
+                  <span className="font-medium text-moon">播放设置</span>
+                </div>
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-moon-dim">播放速度</span>
+                    <select
+                      value={videoSpeed}
+                      onChange={(e) => setVideoSpeed(Number(e.target.value))}
+                      className="bg-white/5 border border-white/10 rounded-lg px-3 py-1 text-sm text-moon focus:outline-none focus:border-emerald/50"
+                    >
+                      <option value={0.5}>0.5x</option>
+                      <option value={0.75}>0.75x</option>
+                      <option value={1}>1x (正常)</option>
+                      <option value={1.25}>1.25x</option>
+                      <option value={1.5}>1.5x</option>
+                      <option value={2}>2x</option>
+                    </select>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-moon-dim">包含例句</span>
+                    <button
+                      onClick={() => {
+                        setVideoShowExample(!videoShowExample);
+                        videoReset();
+                      }}
+                      className={`w-12 h-6 rounded-full transition-all relative ${
+                        videoShowExample ? 'bg-emerald' : 'bg-white/20'
+                      }`}
+                    >
+                      <div
+                        className={`absolute top-0.5 w-5 h-5 rounded-full bg-white transition-all ${
+                          videoShowExample ? 'left-6' : 'left-0.5'
+                        }`}
+                      />
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              {/* 播放列表 */}
+              <div className="glass-card p-4">
+                <div className="flex items-center gap-2 mb-3">
+                  <Film className="text-emerald" size={18} />
+                  <span className="font-medium text-moon">播放列表</span>
+                  <span className="text-xs text-moon-dim ml-auto">
+                    共 {videoPlaylist.length} 条
+                  </span>
+                </div>
+                <div className="max-h-64 overflow-y-auto space-y-1 pr-1">
+                  {videoPlaylist.map((item, i) => (
+                    <button
+                      key={i}
+                      onClick={() => {
+                        setVideoIndex(i);
+                        videoStop();
+                      }}
+                      className={`w-full text-left p-2 rounded-lg flex items-center gap-2 transition-all ${
+                        videoIndex === i
+                          ? 'bg-emerald/10 border border-emerald/30'
+                          : 'hover:bg-white/5'
+                      }`}
+                    >
+                      <span className={`text-xs px-1.5 py-0.5 rounded shrink-0 ${
+                        item.type === 'word'
+                          ? 'bg-blue-100 text-blue-600'
+                          : 'bg-purple-100 text-purple-600'
+                      }`}>
+                        {item.type === 'word' ? '单词' : '例句'}
+                      </span>
+                      <span className="text-sm text-moon truncate flex-1">
+                        {item.text}
+                      </span>
+                      <span className="text-xs text-moon-dim shrink-0">
+                        {i + 1}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* 操作按钮 */}
+              <div className="flex gap-3">
+                <button
+                  onClick={videoReset}
+                  className="flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-lg border border-white/20 text-moon-dim hover:border-emerald/50 hover:text-emerald transition-all"
+                >
+                  <RefreshCw size={16} />
+                  重置
+                </button>
+                <button
+                  onClick={toggleFullscreen}
+                  className="flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-lg bg-emerald/10 text-emerald hover:bg-emerald/20 transition-all"
+                >
+                  <Maximize2 size={16} />
+                  全屏播放
+                </button>
+              </div>
+            </div>
+
+            {/* 右侧：预览区 */}
+            <div className="flex flex-col items-center">
+              <div className="text-sm text-moon-dim mb-3">预览效果（9:16 竖屏）</div>
+              {/* 竖屏预览框 */}
+              <div className={`relative w-full max-w-xs aspect-[9/16] rounded-2xl overflow-hidden shadow-2xl ${currentVideoTheme.bg}`}>
+                <AnimatePresence mode="wait">
+                  {currentVideoItem && (
+                    <motion.div
+                      key={videoIndex}
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -20 }}
+                      transition={{ duration: 0.4 }}
+                      className={`absolute inset-0 flex flex-col items-center justify-center p-6 ${currentVideoTheme.cardBg}`}
+                    >
+                      {/* 场景标题 */}
+                      <div className={`text-xs mb-6 ${currentVideoTheme.subText}`}>
+                        {scene.icon} {scene.title} · {currentVideoItem.index + 1}/{currentVideoItem.total}
+                      </div>
+
+                      {currentVideoItem.type === 'word' ? (
+                        <>
+                          <div className={`px-3 py-1 rounded-full text-xs mb-3 ${currentVideoTheme.accent} bg-current/10`}>
+                            单词
+                          </div>
+                          <p className={`font-serif text-3xl font-bold mb-2 ${currentVideoTheme.text} text-center`}>
+                            {currentVideoItem.text}
+                          </p>
+                          {currentVideoItem.reading && (
+                            <p className={`text-sm mb-2 ${currentVideoTheme.accent}`}>
+                              {currentVideoItem.reading}
+                            </p>
+                          )}
+                          {currentVideoItem.meaning && (
+                            <p className={`text-base ${currentVideoTheme.subText} text-center`}>
+                              {currentVideoItem.meaning}
+                            </p>
+                          )}
+                          <motion.div
+                            animate={speakingWord === currentVideoItem.text ? { scale: [1, 1.2, 1] } : {}}
+                            transition={{ duration: 0.5, repeat: speakingWord === currentVideoItem.text ? Infinity : 0 }}
+                            className={`mt-6 w-12 h-12 rounded-full flex items-center justify-center ${currentVideoTheme.accent} bg-current/10`}
+                          >
+                            <Volume2 size={20} />
+                          </motion.div>
+                        </>
+                      ) : (
+                        <>
+                          <div className={`px-3 py-1 rounded-full text-xs mb-3 ${currentVideoTheme.accent} bg-current/10`}>
+                            例句
+                          </div>
+                          <p className={`font-serif text-lg leading-relaxed mb-3 ${currentVideoTheme.text} text-center`}>
+                            {currentVideoItem.text}
+                          </p>
+                          {currentVideoItem.trans && (
+                            <p className={`text-sm ${currentVideoTheme.subText} text-center`}>
+                              {currentVideoItem.trans}
+                            </p>
+                          )}
+                          <motion.div
+                            animate={speakingExample === currentVideoItem.text ? { scale: [1, 1.2, 1] } : {}}
+                            transition={{ duration: 0.5, repeat: speakingExample === currentVideoItem.text ? Infinity : 0 }}
+                            className={`mt-6 w-12 h-12 rounded-full flex items-center justify-center ${currentVideoTheme.accent} bg-current/10`}
+                          >
+                            <Volume2 size={20} />
+                          </motion.div>
+                        </>
+                      )}
+
+                      {/* 底部水印 */}
+                      <div className={`absolute bottom-4 text-xs ${currentVideoTheme.subText} opacity-50`}>
+                        🌸 日语学习打卡
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+
+                {/* 进度条 */}
+                <div className="absolute top-0 left-0 right-0 h-0.5 bg-black/10">
+                  <div
+                    className={`h-full ${currentVideoTheme.progress} transition-all duration-300`}
+                    style={{ width: `${((videoIndex + 1) / videoPlaylist.length) * 100}%` }}
+                  />
+                </div>
+
+                {/* 迷你控制栏 */}
+                <div className="absolute bottom-0 left-0 right-0 p-3 bg-black/30 backdrop-blur-sm flex items-center justify-between">
+                  <button
+                    onClick={videoPrev}
+                    disabled={videoIndex === 0}
+                    className={`w-8 h-8 rounded-full flex items-center justify-center transition-all ${
+                      videoIndex === 0
+                        ? 'bg-white/10 text-white/30 cursor-not-allowed'
+                        : 'bg-white/20 text-white hover:bg-white/30'
+                    }`}
+                  >
+                    <SkipBack size={14} />
+                  </button>
+                  <button
+                    onClick={toggleVideoPlay}
+                    className={`w-10 h-10 rounded-full flex items-center justify-center text-white shadow-lg transition-all ${
+                      videoPlaying ? 'bg-red-500 hover:bg-red-600' : 'bg-emerald-500 hover:bg-emerald-600'
+                    }`}
+                  >
+                    {videoPlaying ? <Pause size={16} /> : <Play size={16} className="ml-0.5" />}
+                  </button>
+                  <button
+                    onClick={videoNext}
+                    disabled={videoIndex >= videoPlaylist.length - 1}
+                    className={`w-8 h-8 rounded-full flex items-center justify-center transition-all ${
+                      videoIndex >= videoPlaylist.length - 1
+                        ? 'bg-white/10 text-white/30 cursor-not-allowed'
+                        : 'bg-white/20 text-white hover:bg-white/30'
+                    }`}
+                  >
+                    <SkipForward size={14} />
+                  </button>
+                </div>
+              </div>
+
+              <p className="text-xs text-moon-dim mt-3 text-center">
+                💡 点击「全屏播放」进入全屏模式<br />
+                用手机录屏即可保存为视频
+              </p>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
