@@ -56,7 +56,7 @@ export interface SceneCourse {
   imageUrl?: string;
 }
 
-const sceneCourses: SceneCourse[] = [
+export const sceneCourses: SceneCourse[] = [
   {
     id: "ja-fruits",
     lang: "ja",

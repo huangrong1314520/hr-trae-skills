@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useParams, useNavigate } from 'react-router-dom';
-import { api, type SceneCourse } from '@/utils/api';
+import { api, sceneCourses, type SceneCourse } from '@/utils/api';
 import { speakJa } from '@/utils/jaSpeaker';
 import {
   Volume2,
@@ -51,15 +51,21 @@ export default function SceneCreate() {
   const [videoShowExample, setVideoShowExample] = useState(true);
 
   useEffect(() => {
-    api
-      .get<SceneCourse>(`/scenes/${id}`)
-      .then((res) => {
-        const detail = (res as unknown as { data?: SceneCourse }).data ?? res;
-        setScene(detail);
-        generateDefaultContent(detail);
-      })
-      .catch(() => setScene(null))
-      .finally(() => setLoading(false));
+    try {
+      const found = sceneCourses.find((s) => s.id === id);
+      if (found) {
+        setScene(found);
+        generateDefaultContent(found);
+      } else {
+        setScene(sceneCourses[0]);
+        generateDefaultContent(sceneCourses[0]);
+      }
+    } catch (e) {
+      console.error('SceneCreate data error:', e);
+      setScene(null);
+    } finally {
+      setLoading(false);
+    }
   }, [id]);
 
   function generateDefaultContent(sceneData: SceneCourse) {
