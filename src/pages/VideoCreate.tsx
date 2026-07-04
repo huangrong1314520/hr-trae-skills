@@ -15,6 +15,7 @@ import {
   BookOpen,
   AlertCircle,
   Check,
+  ExternalLink,
 } from 'lucide-react';
 
 /* ========== 类型与常量 ========== */
@@ -32,27 +33,139 @@ const TYPE_LABELS: Record<string, string> = {
   movie: '电影',
 };
 
+/* ========== 支持的视频平台 ========== */
+interface VideoPlatform {
+  name: string;
+  color: string;
+  icon: string;
+  patterns: RegExp[];
+  // 将原始链接转为可嵌入播放的 URL
+  toEmbed: (url: string) => string;
+}
+
+const VIDEO_PLATFORMS: VideoPlatform[] = [
+  {
+    name: 'YouTube',
+    color: '#ff0000',
+    icon: '▶',
+    patterns: [
+      /youtube\.com\/watch\?v=/i,
+      /youtu\.be\//i,
+      /youtube\.com\/embed\//i,
+    ],
+    toEmbed: (url) => {
+      const m = url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([\w-]+)/);
+      return m ? `https://www.youtube.com/embed/${m[1]}` : url;
+    },
+  },
+  {
+    name: 'Bilibili',
+    color: '#fb7299',
+    icon: '📺',
+    patterns: [
+      /bilibili\.com\/video\//i,
+      /b23\.tv\//i,
+    ],
+    toEmbed: (url) => {
+      // BV号
+      const bv = url.match(/bilibili\.com\/video\/(BV[\w]+)/i);
+      if (bv) return `https://player.bilibili.com/player.html?bvid=${bv[1]}&high_quality=1&autoplay=0`;
+      // AV号
+      const av = url.match(/bilibili\.com\/video\/av(\d+)/i);
+      if (av) return `https://player.bilibili.com/player.html?aid=${av[1]}&high_quality=1&autoplay=0`;
+      // 短链接 b23.tv 需要跳转，无法直接嵌入
+      return url;
+    },
+  },
+  {
+    name: '抖音',
+    color: '#000000',
+    icon: '🎵',
+    patterns: [
+      /douyin\.com\//i,
+      /iesdouyin\.com\//i,
+      /v\.douyin\.com\//i,
+    ],
+    toEmbed: (url) => {
+      // 抖音视频ID提取
+      const m = url.match(/\/video\/(\d+)/i) || url.match(/modal_id=(\d+)/i);
+      if (m) return `https://open.douyin.com/player/video?vid=${m[1]}`;
+      return url;
+    },
+  },
+  {
+    name: '小红书',
+    color: '#ff2442',
+    icon: '📕',
+    patterns: [
+      /xiaohongshu\.com\//i,
+      /xhslink\.com\//i,
+    ],
+    toEmbed: (url) => url, // 小红书无公开embed，保留原链接
+  },
+  {
+    name: '西瓜视频',
+    color: '#ff5c38',
+    icon: '🍉',
+    patterns: [
+      /ixigua\.com\//i,
+    ],
+    toEmbed: (url) => {
+      const m = url.match(/ixigua\.com\/(\d+)/i);
+      if (m) return `https://player.ixigua.com/player.html?video_id=${m[1]}`;
+      return url;
+    },
+  },
+  {
+    name: 'Niconico',
+    color: '#cc0000',
+    icon: '🎬',
+    patterns: [
+      /nicovideo\.jp\//i,
+      /nico\.ms\//i,
+    ],
+    toEmbed: (url) => {
+      const m = url.match(/(?:watch\/|nico\.ms\/)([a-z]{2}\d+)/i);
+      if (m) return `https://embed.nicovideo.jp/watch/${m[1]}`;
+      return url;
+    },
+  },
+];
+
+/** 识别链接所属平台 */
+function detectPlatform(url: string): VideoPlatform | null {
+  const trimmed = url.trim();
+  if (!trimmed) return null;
+  for (const p of VIDEO_PLATFORMS) {
+    if (p.patterns.some((re) => re.test(trimmed))) return p;
+  }
+  return null;
+}
+
+/** 将视频链接转换为可嵌入的 URL */
+function toEmbedUrl(url: string): string {
+  const trimmed = url.trim();
+  if (!trimmed) return '';
+  const platform = detectPlatform(trimmed);
+  if (platform) return platform.toEmbed(trimmed);
+  return trimmed;
+}
+
+/** 判断平台是否支持嵌入播放 */
+function isEmbeddable(url: string): boolean {
+  const platform = detectPlatform(url);
+  if (!platform) return true; // 未知链接尝试嵌入
+  // 小红书不支持嵌入
+  if (platform.name === '小红书') return false;
+  return true;
+}
+
 /* ========== 工具函数 ========== */
 // 秒数转 mm:ss
 function formatDuration(seconds: number): string {
   const m = Math.floor(seconds / 60);
   const s = seconds % 60;
   return `${m}:${s.toString().padStart(2, '0')}`;
-}
-
-// 将视频链接转换为可嵌入的 URL（支持 YouTube / Bilibili）
-function toEmbedUrl(url: string): string {
-  const trimmed = url.trim();
-  if (!trimmed) return '';
-  // 已是 embed 链接
-  if (/youtube\.com\/embed\//.test(trimmed)) return trimmed;
-  // YouTube 普通链接或短链
-  const ytMatch = trimmed.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/)([\w-]+)/);
-  if (ytMatch) return `https://www.youtube.com/embed/${ytMatch[1]}`;
-  // Bilibili 视频
-  const biliMatch = trimmed.match(/bilibili\.com\/video\/(BV[\w]+)/);
-  if (biliMatch) return `https://player.bilibili.com/player.html?bvid=${biliMatch[1]}&high_quality=1`;
-  return trimmed;
 }
 
 export default function VideoCreate() {
@@ -69,6 +182,8 @@ export default function VideoCreate() {
   /* ----- 链接相关状态 ----- */
   const [linkInput, setLinkInput] = useState('');
   const [linkUrl, setLinkUrl] = useState('');
+  const [detectedPlatform, setDetectedPlatform] = useState<VideoPlatform | null>(null);
+  const [linkError, setLinkError] = useState('');
 
   /* ----- 字幕与面板状态 ----- */
   const [activeLineId, setActiveLineId] = useState<number | null>(null);
@@ -125,9 +240,31 @@ export default function VideoCreate() {
 
   /* ----- 解析粘贴链接 ----- */
   const handleLoadLink = () => {
-    if (!linkInput.trim()) return;
-    setLinkUrl(linkInput.trim());
+    const trimmed = linkInput.trim();
+    if (!trimmed) return;
+    setLinkError('');
+    const platform = detectPlatform(trimmed);
+    setDetectedPlatform(platform);
+    if (platform && !isEmbeddable(trimmed)) {
+      // 不支持嵌入的平台，提示用户在新窗口打开
+      setLinkUrl(trimmed);
+      setLinkError(`${platform.name} 暂不支持站内播放，可点击下方按钮跳转观看`);
+    } else {
+      setLinkUrl(trimmed);
+    }
     scrollToVideo();
+  };
+
+  /* ----- 链接输入变化时实时识别平台 ----- */
+  const handleLinkInput = (value: string) => {
+    setLinkInput(value);
+    setLinkError('');
+    if (value.trim()) {
+      const platform = detectPlatform(value);
+      setDetectedPlatform(platform);
+    } else {
+      setDetectedPlatform(null);
+    }
   };
 
   /* ----- 当前 Tab 是否已有可用视频 ----- */
@@ -182,6 +319,26 @@ export default function VideoCreate() {
     if (activeTab === 'library' && selectedMaterial) src = selectedMaterial.videoUrl;
     else if (activeTab === 'link' && linkUrl) src = toEmbedUrl(linkUrl);
     if (!src) return null;
+
+    // 不支持嵌入的平台，显示跳转提示
+    if (activeTab === 'link' && linkUrl && !isEmbeddable(linkUrl)) {
+      return (
+        <div className="w-full h-full flex flex-col items-center justify-center bg-night-50 text-center px-6">
+          <span className="text-4xl mb-4">{detectedPlatform?.icon || '🎬'}</span>
+          <p className="text-moon text-lg font-medium mb-2">{detectedPlatform?.name} 视频</p>
+          <p className="text-moon-dim text-sm mb-5">该平台暂不支持站内嵌入播放</p>
+          <a
+            href={linkUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="btn-glow px-5 py-2 text-sm flex items-center gap-2"
+          >
+            <ExternalLink size={15} /> 新窗口打开观看
+          </a>
+        </div>
+      );
+    }
+
     return (
       <iframe
         src={src}
@@ -338,11 +495,25 @@ export default function VideoCreate() {
           {/* 粘贴链接 */}
           {activeTab === 'link' && (
             <div className="space-y-3">
+              {/* 平台快捷标签 */}
+              <div className="flex flex-wrap gap-2 mb-1">
+                {VIDEO_PLATFORMS.map((p) => (
+                  <span
+                    key={p.name}
+                    className="text-xs px-2 py-1 rounded-full border border-white/10 text-moon-dim flex items-center gap-1"
+                    style={{ borderColor: detectedPlatform?.name === p.name ? p.color : undefined, color: detectedPlatform?.name === p.name ? p.color : undefined }}
+                  >
+                    <span>{p.icon}</span> {p.name}
+                  </span>
+                ))}
+              </div>
+
               <div className="flex gap-2">
                 <input
                   value={linkInput}
-                  onChange={(e) => setLinkInput(e.target.value)}
-                  placeholder="粘贴 YouTube / Bilibili 等视频链接"
+                  onChange={(e) => handleLinkInput(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && handleLoadLink()}
+                  placeholder="粘贴 B站 / 抖音 / 小红书 / YouTube / Niconico 等视频链接"
                   className="input-night flex-1"
                 />
                 <button
@@ -353,10 +524,38 @@ export default function VideoCreate() {
                   <Link2 size={15} /> 解析
                 </button>
               </div>
-              {linkUrl && (
+
+              {/* 平台识别提示 */}
+              {detectedPlatform && (
+                <div className="flex items-center gap-2 text-xs">
+                  <span
+                    className="flex items-center gap-1 px-2 py-1 rounded-full"
+                    style={{ background: `${detectedPlatform.color}15`, color: detectedPlatform.color }}
+                  >
+                    <span>{detectedPlatform.icon}</span> 已识别：{detectedPlatform.name}
+                  </span>
+                  {isEmbeddable(linkInput) ? (
+                    <span className="text-emerald flex items-center gap-1">
+                      <Check size={12} /> 支持站内播放
+                    </span>
+                  ) : (
+                    <span className="text-moon-dim">不支持站内播放</span>
+                  )}
+                </div>
+              )}
+
+              {/* 错误提示 */}
+              {linkError && (
+                <div className="flex items-center gap-2 text-xs text-amber-400">
+                  <AlertCircle size={14} /> {linkError}
+                </div>
+              )}
+
+              {/* 已加载提示 */}
+              {linkUrl && !linkError && (
                 <p className="text-xs text-moon-dim flex items-center gap-1.5">
                   <Check size={13} className="text-emerald" />
-                  已加载：{linkUrl}
+                  已加载：{linkUrl.length > 50 ? linkUrl.slice(0, 50) + '...' : linkUrl}
                 </p>
               )}
             </div>
