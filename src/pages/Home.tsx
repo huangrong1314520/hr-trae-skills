@@ -1,6 +1,6 @@
 import { useEffect, useState, useMemo, useRef } from 'react';
 import { motion } from 'framer-motion';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { api, LANG_CONFIG, type SceneCourse } from '@/utils/api';
 import { getJaAudioDataUri } from '@/utils/audioData';
 import { Clapperboard, Languages, Pencil, ArrowRight, Sparkles, Calendar, Volume2 } from 'lucide-react';
@@ -82,19 +82,19 @@ const WORKSHOPS = [
 ];
 
 export default function Home() {
+  const navigate = useNavigate();
   const [scenes, setScenes] = useState<SceneCourse[]>([]);
   const [loading, setLoading] = useState(true);
   const [speakingSceneId, setSpeakingSceneId] = useState<string | null>(null);
 
-  const handleSpeakScene = (scene: SceneCourse, e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    // 优先朗读第一个单词（通常有内嵌音频），否则朗读标题
-    const text = scene.words?.[0]?.word || scene.title;
+  // 朗读场景：优先找有内嵌音频的单词，否则用浏览器语音合成
+  const handleSpeakScene = (scene: SceneCourse) => {
+    // 找第一个有内嵌音频的单词，没有就用第一个单词
+    const wordWithAudio = scene.words?.find((w) => getJaAudioDataUri(w.word));
+    const text = wordWithAudio?.word || scene.words?.[0]?.word || scene.title;
     setSpeakingSceneId(scene.id);
     speakJa(text);
 
-    // 清除朗读状态：内嵌音频通过 ended 事件，浏览器语音通过定时器
     const audio = getHomeAudio();
     const clear = () => {
       setSpeakingSceneId(null);
@@ -105,7 +105,7 @@ export default function Home() {
       audio.addEventListener('ended', clear);
       audio.addEventListener('error', clear);
     }
-    // 兜底定时器（浏览器语音合成没有 ended 事件可监听）
+    // 兜底定时器
     setTimeout(() => setSpeakingSceneId(null), 3000);
   };
 
@@ -172,14 +172,18 @@ export default function Home() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.1, duration: 0.4 }}
           >
-            <Link
-              to={`/scenes/${todayScene.id}`}
-              className="glass-card p-6 block hover:border-emerald/40 group relative"
+            <div
+              onClick={() => navigate(`/scenes/${todayScene.id}`)}
+              className="glass-card p-6 block hover:border-emerald/40 group relative cursor-pointer"
             >
-              {/* 发音按钮 */}
+              {/* 发音按钮 — 独立于卡片点击 */}
               <button
-                onClick={(e) => handleSpeakScene(todayScene, e)}
-                className={`absolute top-4 right-4 w-9 h-9 rounded-full flex items-center justify-center transition-all ${
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleSpeakScene(todayScene);
+                }}
+                className={`absolute top-4 right-4 z-10 w-10 h-10 rounded-full flex items-center justify-center transition-all ${
                   speakingSceneId === todayScene.id
                     ? 'bg-emerald/20 text-emerald animate-pulse'
                     : 'bg-white/5 text-moon-dim hover:bg-emerald/10 hover:text-emerald'
@@ -218,7 +222,7 @@ export default function Home() {
                   </span>
                 </div>
               </div>
-            </Link>
+            </div>
           </motion.div>
         ) : (
           <div className="glass-card p-6 text-center text-moon-dim">暂无推荐场景</div>
@@ -282,9 +286,9 @@ export default function Home() {
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.2 + i * 0.1, duration: 0.4 }}
               >
-                <Link
-                  to={`/scenes/${scene.id}`}
-                  className="glass-card p-5 flex items-center gap-4 hover:border-emerald/40 group relative"
+                <div
+                  onClick={() => navigate(`/scenes/${scene.id}`)}
+                  className="glass-card p-5 flex items-center gap-4 hover:border-emerald/40 group relative cursor-pointer"
                 >
                   <div className="text-3xl shrink-0 select-none">{scene.icon}</div>
                   <div className="flex-1 min-w-0">
@@ -301,7 +305,11 @@ export default function Home() {
                     </p>
                   </div>
                   <button
-                    onClick={(e) => handleSpeakScene(scene, e)}
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleSpeakScene(scene);
+                    }}
                     className={`shrink-0 w-8 h-8 rounded-full flex items-center justify-center transition-all ${
                       speakingSceneId === scene.id
                         ? 'bg-emerald/20 text-emerald animate-pulse'
@@ -311,7 +319,7 @@ export default function Home() {
                   >
                     <Volume2 size={14} />
                   </button>
-                </Link>
+                </div>
               </motion.div>
             ))}
           </div>
