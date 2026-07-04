@@ -174,126 +174,266 @@ ${sceneData.grammars.map((g, i) => `${i + 1}. ${g.pattern}\n   📌 ${g.explanat
     },
   ];
 
-  // 构建视频播放列表：单词 + 例句交替
+  // 构建视频播放列表 + 时间轴
   function buildVideoPlaylist() {
-    if (!scene) return [];
-    const list: { type: 'word' | 'example'; text: string; reading?: string; meaning?: string; trans?: string; index: number; total: number }[] = [];
+    if (!scene) return { items: [] as any[], totalDuration: 0, durations: [] as number[] };
+    const items: { type: 'word' | 'example'; text: string; reading?: string; meaning?: string; trans?: string; index: number; total: number; duration: number; startTime: number }[] = [];
+    const durations: number[] = [];
+    let t = 0;
+    // 基础时长（毫秒）：单词3s，例句5s
+    const baseWordDur = 3000;
+    const baseExampleDur = 5000;
+
     scene.words.forEach((word, i) => {
-      list.push({
+      const wordDur = baseWordDur;
+      items.push({
         type: 'word',
         text: word.word,
         reading: word.reading,
         meaning: word.meaning,
         index: i,
         total: scene.words.length,
+        duration: wordDur,
+        startTime: t,
       });
+      durations.push(wordDur);
+      t += wordDur;
+
       if (word.example && videoShowExample) {
-        list.push({
+        const exDur = baseExampleDur;
+        items.push({
           type: 'example',
           text: word.example,
           trans: word.exampleTrans,
           index: i,
           total: scene.words.length,
+          duration: exDur,
+          startTime: t,
         });
+        durations.push(exDur);
+        t += exDur;
       }
     });
-    return list;
+
+    return { items, totalDuration: t, durations };
   }
 
-  const videoPlaylist = buildVideoPlaylist();
+  const { items: videoPlaylist, totalDuration: videoTotalDuration } = buildVideoPlaylist();
   const currentVideoItem = videoPlaylist[videoIndex];
 
-  // 播放下一个
-  function videoNext() {
-    if (videoIndex < videoPlaylist.length - 1) {
-      setVideoIndex(videoIndex + 1);
-    } else {
-      // 播放完毕，停止
+  // 时间轴相关 ref
+  const rafRef = useRef<number | null>(null);
+  const startTimeRef = useRef<number>(0);      // 播放开始时间戳
+  const pausedTimeRef = useRef<number>(0);     // 暂停时已播放时间
+  const lastIdxRef = useRef<number>(-1);       // 上一次渲染的索引，避免重复 set
+  const audioPlayedRef = useRef<Set<number>>(new Set()); // 已播放过音频的条目索引
+  const progressBarRef = useRef<HTMLDivElement>(null); // 进度条DOM，直接操作减少重渲染
+  const fullscreenProgressRef = useRef<HTMLDivElement>(null); // 全屏进度条
+
+  // 根据时间计算当前条目索引
+  function getIndexByTime(time: number): number {
+    const scaledTime = time * videoSpeed;
+    let idx = 0;
+    let acc = 0;
+    for (let i = 0; i < videoPlaylist.length; i++) {
+      acc += videoPlaylist[i].duration;
+      if (scaledTime < acc) {
+        idx = i;
+        break;
+      }
+      idx = i;
+    }
+    return Math.min(idx, videoPlaylist.length - 1);
+  }
+
+  // 获取当前已播放时间（考虑速度）
+  function getCurrentPlayTime(): number {
+    if (!videoPlayingRef.current) return pausedTimeRef.current;
+    return pausedTimeRef.current + (performance.now() - startTimeRef.current);
+  }
+
+  // 进度百分比
+  const videoProgress = videoTotalDuration > 0
+    ? (getCurrentPlayTime() * videoSpeed / videoTotalDuration) * 100
+    : 0;
+
+  // RAF 循环驱动时间轴
+  function tick() {
+    if (!videoPlayingRef.current) return;
+
+    const now = performance.now();
+    const elapsed = pausedTimeRef.current + (now - startTimeRef.current);
+    const scaledElapsed = elapsed * videoSpeed;
+    const progressPct = videoTotalDuration > 0
+      ? Math.min(100, (scaledElapsed / videoTotalDuration) * 100)
+      : 0;
+
+    // 直接更新进度条 DOM，避免 React 重渲染
+    if (progressBarRef.current) {
+      progressBarRef.current.style.width = `${progressPct}%`;
+    }
+    if (fullscreenProgressRef.current) {
+      fullscreenProgressRef.current.style.width = `${progressPct}%`;
+    }
+
+    // 播放完毕
+    if (scaledElapsed >= videoTotalDuration) {
       videoStop();
+      setVideoIndex(videoPlaylist.length - 1);
+      return;
+    }
+
+    // 计算当前索引
+    const idx = getIndexByTime(elapsed);
+
+    // 索引变化时更新状态 + 播音频
+    if (idx !== lastIdxRef.current) {
+      lastIdxRef.current = idx;
+      setVideoIndex(idx);
+
+      // 该条目还没播过音频，就播一下
+      if (!audioPlayedRef.current.has(idx)) {
+        audioPlayedRef.current.add(idx);
+        const item = videoPlaylist[idx];
+        if (item) {
+          if (item.type === 'word') setSpeakingWord(item.text);
+          else setSpeakingExample(item.text);
+
+          speakJa(item.text).finally(() => {
+            if (item.type === 'word') setSpeakingWord(null);
+            else setSpeakingExample(null);
+          });
+        }
+      }
+    }
+
+    rafRef.current = requestAnimationFrame(tick);
+  }
+
+  // 开始/继续播放
+  function videoPlay() {
+    if (videoPlaylist.length === 0) return;
+    if (videoPlayingRef.current) return;
+
+    // 如果已经到末尾了，从头开始
+    if (pausedTimeRef.current * videoSpeed >= videoTotalDuration) {
+      pausedTimeRef.current = 0;
+      lastIdxRef.current = -1;
+      audioPlayedRef.current.clear();
+      setVideoIndex(0);
+    }
+
+    videoPlayingRef.current = true;
+    setVideoPlaying(true);
+    startTimeRef.current = performance.now();
+    rafRef.current = requestAnimationFrame(tick);
+  }
+
+  // 更新进度条（暂停/跳转后手动同步一次）
+  function syncProgressBar() {
+    const pct = videoTotalDuration > 0
+      ? Math.min(100, (pausedTimeRef.current * videoSpeed / videoTotalDuration) * 100)
+      : 0;
+    if (progressBarRef.current) {
+      progressBarRef.current.style.width = `${pct}%`;
+    }
+    if (fullscreenProgressRef.current) {
+      fullscreenProgressRef.current.style.width = `${pct}%`;
     }
   }
 
-  // 播放上一个
-  function videoPrev() {
-    if (videoIndex > 0) {
-      setVideoIndex(videoIndex - 1);
+  // 暂停
+  function videoPause() {
+    if (!videoPlayingRef.current) return;
+    videoPlayingRef.current = false;
+    setVideoPlaying(false);
+
+    // 记录暂停时的已播放时间
+    pausedTimeRef.current += performance.now() - startTimeRef.current;
+
+    if (rafRef.current) {
+      cancelAnimationFrame(rafRef.current);
+      rafRef.current = null;
     }
+    try {
+      if ('speechSynthesis' in window) window.speechSynthesis.cancel();
+    } catch { /* ignore */ }
+
+    syncProgressBar();
   }
 
-  // 停止播放
+  // 停止（回到开头）
   function videoStop() {
     videoPlayingRef.current = false;
     setVideoPlaying(false);
-    if (videoTimerRef.current) {
-      clearTimeout(videoTimerRef.current);
-      videoTimerRef.current = null;
+    if (rafRef.current) {
+      cancelAnimationFrame(rafRef.current);
+      rafRef.current = null;
     }
     try {
       if ('speechSynthesis' in window) window.speechSynthesis.cancel();
     } catch { /* ignore */ }
   }
 
-  // 开始/继续播放
-  async function videoPlay() {
-    if (!scene || videoPlaylist.length === 0) return;
-    
-    videoPlayingRef.current = true;
-    setVideoPlaying(true);
-    await playCurrentVideoItem();
+  // 重置
+  function videoReset() {
+    videoStop();
+    pausedTimeRef.current = 0;
+    lastIdxRef.current = -1;
+    audioPlayedRef.current.clear();
+    setVideoIndex(0);
+    // 延迟一帧同步进度条（确保DOM已挂载）
+    requestAnimationFrame(() => syncProgressBar());
   }
 
-  // 播放当前条目
-  async function playCurrentVideoItem() {
-    if (!videoPlayingRef.current) return;
-    const item = videoPlaylist[videoIndex];
-    if (!item) {
-      videoStop();
-      return;
+  // 下一个
+  function videoNext() {
+    if (videoIndex < videoPlaylist.length - 1) {
+      videoSeekTo(videoIndex + 1);
     }
+  }
 
-    if (item.type === 'word') {
-      setSpeakingWord(item.text);
-    } else {
-      setSpeakingExample(item.text);
+  // 上一个
+  function videoPrev() {
+    if (videoIndex > 0) {
+      videoSeekTo(videoIndex - 1);
     }
-
-    try {
-      await speakJa(item.text);
-    } catch {
-      // 播放失败也继续
-    }
-
-    if (item.type === 'word') {
-      setSpeakingWord(null);
-    } else {
-      setSpeakingExample(null);
-    }
-
-    if (!videoPlayingRef.current) return;
-
-    // 根据速度调整间隔
-    const delay = item.type === 'word' ? 1200 / videoSpeed : 1800 / videoSpeed;
-    videoTimerRef.current = window.setTimeout(() => {
-      if (videoPlayingRef.current) {
-        videoNext();
-        playCurrentVideoItem();
-      }
-    }, delay);
   }
 
   // 切换播放/暂停
   function toggleVideoPlay() {
     if (videoPlaying) {
-      videoStop();
+      videoPause();
     } else {
       videoPlay();
     }
   }
 
-  // 重置到开头
-  function videoReset() {
-    videoStop();
-    setVideoIndex(0);
+  // 跳转到指定条目
+  function videoSeekTo(idx: number) {
+    if (idx < 0 || idx >= videoPlaylist.length) return;
+    const startTime = videoPlaylist[idx].startTime;
+    pausedTimeRef.current = startTime / videoSpeed;
+    startTimeRef.current = performance.now();
+    lastIdxRef.current = -1;
+    // 清掉后面已播放的标记，以便重新播放
+    for (let i = idx; i < videoPlaylist.length; i++) {
+      audioPlayedRef.current.delete(i);
+    }
+    setVideoIndex(idx);
+    syncProgressBar();
+
+    if (!videoPlayingRef.current) {
+      const item = videoPlaylist[idx];
+      if (item) {
+        if (item.type === 'word') setSpeakingWord(item.text);
+        else setSpeakingExample(item.text);
+        speakJa(item.text).finally(() => {
+          if (item.type === 'word') setSpeakingWord(null);
+          else setSpeakingExample(null);
+        });
+      }
+    }
   }
 
   // 清理
@@ -301,20 +441,14 @@ ${sceneData.grammars.map((g, i) => `${i + 1}. ${g.pattern}\n   📌 ${g.explanat
     return () => {
       videoStop();
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // 当 index 变化时，如果正在播放，自动播放新条目
+  // 当例句开关变化时，重置
   useEffect(() => {
-    if (videoPlaying && videoPlayingRef.current) {
-      // 取消当前的timer
-      if (videoTimerRef.current) {
-        clearTimeout(videoTimerRef.current);
-        videoTimerRef.current = null;
-      }
-      playCurrentVideoItem();
-    }
+    videoReset();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [videoIndex]);
+  }, [videoShowExample]);
 
   // 全屏
   function toggleFullscreen() {
@@ -376,8 +510,9 @@ ${sceneData.grammars.map((g, i) => `${i + 1}. ${g.pattern}\n   📌 ${g.explanat
         {/* 进度条 */}
         <div className="absolute top-0 left-0 right-0 h-1 bg-black/10">
           <div
-            className={`h-full ${currentVideoTheme.progress} transition-all duration-300`}
-            style={{ width: `${((videoIndex + 1) / videoPlaylist.length) * 100}%` }}
+            ref={fullscreenProgressRef}
+            className={`h-full ${currentVideoTheme.progress}`}
+            style={{ width: '0%' }}
           />
         </div>
 
@@ -880,10 +1015,7 @@ ${sceneData.grammars.map((g, i) => `${i + 1}. ${g.pattern}\n   📌 ${g.explanat
                   {videoPlaylist.map((item, i) => (
                     <button
                       key={i}
-                      onClick={() => {
-                        setVideoIndex(i);
-                        videoStop();
-                      }}
+                      onClick={() => videoSeekTo(i)}
                       className={`w-full text-left p-2 rounded-lg flex items-center gap-2 transition-all ${
                         videoIndex === i
                           ? 'bg-emerald/10 border border-emerald/30'
@@ -1007,8 +1139,9 @@ ${sceneData.grammars.map((g, i) => `${i + 1}. ${g.pattern}\n   📌 ${g.explanat
                 {/* 进度条 */}
                 <div className="absolute top-0 left-0 right-0 h-0.5 bg-black/10">
                   <div
-                    className={`h-full ${currentVideoTheme.progress} transition-all duration-300`}
-                    style={{ width: `${((videoIndex + 1) / videoPlaylist.length) * 100}%` }}
+                    ref={progressBarRef}
+                    className={`h-full ${currentVideoTheme.progress}`}
+                    style={{ width: '0%' }}
                   />
                 </div>
 
