@@ -35,7 +35,6 @@ if (typeof window !== 'undefined') {
 /* ========== 选择日语 voice ========== */
 function pickJaVoice(): SpeechSynthesisVoice | null {
   if (!voicesReady || voicesCache.length === 0) {
-    // 尝试重新获取
     if ('speechSynthesis' in window) {
       voicesCache = window.speechSynthesis.getVoices();
       if (voicesCache.length > 0) voicesReady = true;
@@ -62,19 +61,10 @@ function browserSpeak(text: string): Promise<void> {
     }
     const synth = window.speechSynthesis;
 
-    // 避免频繁 cancel：只有在真的在说或有队列时才取消
-    if (synth.speaking || synth.pending) {
-      synth.cancel();
-      // cancel 后稍微延迟再 speak，避免队列被打断导致无声
-      setTimeout(() => doSpeak(), 50);
-    } else {
-      doSpeak();
-    }
-
     function doSpeak() {
       const u = new SpeechSynthesisUtterance(text);
       u.lang = 'ja-JP';
-      u.rate = 0.85;
+      u.rate = 0.9;   // 略慢于正常，便于学习
       u.pitch = 1;
       u.volume = 1;
 
@@ -82,89 +72,114 @@ function browserSpeak(text: string): Promise<void> {
       if (voice) u.voice = voice;
 
       let finished = false;
-      const finish = (ok: boolean, err?: Error) => {
+      const finish = (ok: boolean) => {
         if (finished) return;
         finished = true;
         if (ok) resolve();
-        else reject(err || new Error('speak failed'));
+        else reject(new Error('speak failed'));
       };
 
-      u.onend = () => finish(true);
-      u.onerror = (e) => finish(false, new Error(e.error || 'unknown'));
-
-      // 超时保护：如果 10 秒内还没结束，强制结束
       const timeoutId = setTimeout(() => {
         if (!finished) {
-          synth.cancel();
-          finish(false, new Error('timeout'));
+          try { synth.cancel(); } catch { /* ignore */ }
+          finish(false);
         }
-      }, 10000);
+      }, 15000);
 
-      u.onend = () => {
-        clearTimeout(timeoutId);
-        finish(true);
-      };
-      u.onerror = (e) => {
-        clearTimeout(timeoutId);
-        finish(false, new Error(e.error || 'unknown'));
-      };
+      u.onend = () => { clearTimeout(timeoutId); finish(true); };
+      u.onerror = () => { clearTimeout(timeoutId); finish(false); };
 
       synth.speak(u);
+    }
+
+    // 避免频繁 cancel：只有在真的在说或有队列时才取消
+    if (synth.speaking || synth.pending) {
+      synth.cancel();
+      setTimeout(doSpeak, 80);
+    } else {
+      doSpeak();
     }
   });
 }
 
+/* ========== 播放内嵌 base64 音频 ========== */
+function playEmbeddedAudio(audio: HTMLAudioElement, src: string): Promise<void> {
+  return new Promise((resolve, reject) => {
+    let done = false;
+    const finish = (ok: boolean) => {
+      if (done) return;
+      done = true;
+      audio.removeEventListener('ended', onEnded);
+      audio.removeEventListener('error', onError);
+      audio.removeEventListener('canplay', onCanPlay);
+      if (ok) resolve();
+      else reject(new Error('audio failed'));
+    };
+
+    const onEnded = () => finish(true);
+    const onError = () => finish(false);
+    const onCanPlay = () => {
+      // 确保音频可以播放后再 play
+      const p = audio.play();
+      if (p && typeof p.catch === 'function') {
+        p.catch(() => finish(false));
+      }
+    };
+
+    audio.addEventListener('ended', onEnded);
+    audio.addEventListener('error', onError);
+    audio.addEventListener('canplay', onCanPlay);
+
+    // 设置 src 并触发加载
+    audio.src = src;
+    audio.load();
+
+    // 超时保护：8秒内没结束就失败
+    setTimeout(() => {
+      if (!done) finish(false);
+    }, 8000);
+  });
+}
+
 /* ========== 主发音函数 ========== */
-// 返回 Promise，方便调用方做状态管理
+// 策略：
+// - 短文本（单词，<=10字符）：优先内嵌音频（秒播、声调准确）
+// - 长文本（例句，>10字符）：优先浏览器语音合成（更自然、有语调变化和停顿）
+//   浏览器语音不可用时回退内嵌音频
 export function speakJa(text: string): Promise<void> {
   const audio = getAudio();
 
-  // 停止当前音频播放
+  // 停止当前播放
   if (audio) {
     try { audio.pause(); } catch { /* ignore */ }
-    audio.currentTime = 0;
   }
-
-  // 取消浏览器语音队列
   try {
     if ('speechSynthesis' in window) window.speechSynthesis.cancel();
   } catch { /* ignore */ }
 
-  // 优先内嵌 base64 音频（秒播，最可靠）
+  const isLongText = text.length > 10;
   const embeddedUrl = getJaAudioDataUri(text);
-  if (embeddedUrl && audio) {
-    return new Promise((resolve, reject) => {
-      audio!.src = embeddedUrl;
-      let done = false;
-      const finish = (ok: boolean, err?: Error) => {
-        if (done) return;
-        done = true;
-        if (ok) resolve();
-        else reject(err || new Error('audio play failed'));
-      };
 
-      const onEnded = () => { cleanup(); finish(true); };
-      const onError = () => { cleanup(); finish(false, new Error('audio error')); };
-      const cleanup = () => {
-        audio!.removeEventListener('ended', onEnded);
-        audio!.removeEventListener('error', onError);
-      };
-
-      audio!.addEventListener('ended', onEnded);
-      audio!.addEventListener('error', onError);
-
-      const p = audio!.play();
-      if (p && typeof p.catch === 'function') {
-        p.catch(() => {
-          cleanup();
-          // 内嵌音频播放失败，回退浏览器语音
-          browserSpeak(text).then(resolve).catch(reject);
-        });
+  // 长文本（例句）：优先浏览器语音合成（更自然，有语调变化和停顿）
+  if (isLongText) {
+    return browserSpeak(text).catch(() => {
+      // 浏览器语音失败，回退内嵌音频
+      if (embeddedUrl && audio) {
+        return playEmbeddedAudio(audio, embeddedUrl);
       }
+      return Promise.reject(new Error('no audio available'));
     });
   }
 
-  // 无内嵌音频，直接用浏览器语音合成
+  // 短文本（单词）：优先内嵌音频（秒播、声调准确）
+  if (embeddedUrl && audio) {
+    return playEmbeddedAudio(audio, embeddedUrl).catch(() => {
+      // 内嵌音频失败，回退浏览器语音
+      return browserSpeak(text);
+    });
+  }
+
+  // 无内嵌音频，直接用浏览器语音
   return browserSpeak(text);
 }
 
