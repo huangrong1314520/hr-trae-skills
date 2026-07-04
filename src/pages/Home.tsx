@@ -1,8 +1,59 @@
-import { useEffect, useState, useMemo } from 'react';
+import { useEffect, useState, useMemo, useRef } from 'react';
 import { motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
 import { api, LANG_CONFIG, type SceneCourse } from '@/utils/api';
-import { Clapperboard, Languages, Pencil, ArrowRight, Sparkles, Calendar } from 'lucide-react';
+import { getJaAudioDataUri } from '@/utils/audioData';
+import { Clapperboard, Languages, Pencil, ArrowRight, Sparkles, Calendar, Volume2 } from 'lucide-react';
+
+// 日语发音工具（与 SceneDetail 页相同的实现）
+let homeAudioEl: HTMLAudioElement | null = null;
+
+function getHomeAudio(): HTMLAudioElement | null {
+  if (typeof window === 'undefined') return null;
+  if (!homeAudioEl) {
+    homeAudioEl = new Audio();
+    homeAudioEl.preload = 'auto';
+    homeAudioEl.volume = 1;
+  }
+  return homeAudioEl;
+}
+
+function speakJa(text: string) {
+  const audio = getHomeAudio();
+  if (!audio) return;
+  try { audio.pause(); } catch { /* ignore */ }
+  audio.currentTime = 0;
+
+  const embeddedUrl = getJaAudioDataUri(text);
+  if (embeddedUrl) {
+    audio.src = embeddedUrl;
+    const p = audio.play();
+    if (p && typeof p.catch === 'function') {
+      p.catch(() => fallbackBrowserSpeech(text));
+    }
+    return;
+  }
+
+  const remoteUrl = `https://fanyi.baidu.com/gettts?lan=jp&text=${encodeURIComponent(text)}&spd=3&source=web`;
+  audio.src = remoteUrl;
+  const p = audio.play();
+  if (p && typeof p.catch === 'function') {
+    p.catch(() => fallbackBrowserSpeech(text));
+  }
+}
+
+function fallbackBrowserSpeech(text: string) {
+  try {
+    if ('speechSynthesis' in window) {
+      const synth = window.speechSynthesis;
+      synth.cancel();
+      const u = new SpeechSynthesisUtterance(text);
+      u.lang = 'ja-JP';
+      u.rate = 0.85;
+      synth.speak(u);
+    }
+  } catch { /* ignore */ }
+}
 
 // 创作工坊入口配置
 const WORKSHOPS = [
@@ -29,6 +80,25 @@ const WORKSHOPS = [
 export default function Home() {
   const [scenes, setScenes] = useState<SceneCourse[]>([]);
   const [loading, setLoading] = useState(true);
+  const [speakingSceneId, setSpeakingSceneId] = useState<string | null>(null);
+
+  const handleSpeakScene = (scene: SceneCourse, e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const text = scene.words?.[0]?.word || scene.title;
+    setSpeakingSceneId(scene.id);
+    speakJa(text);
+    const audio = getHomeAudio();
+    if (audio) {
+      const clear = () => {
+        setSpeakingSceneId(null);
+        audio.removeEventListener('ended', clear);
+        audio.removeEventListener('error', clear);
+      };
+      audio.addEventListener('ended', clear);
+      audio.addEventListener('error', clear);
+    }
+  };
 
   // 获取场景课程列表（首页无需登录检查，直接展示）
   useEffect(() => {
@@ -95,13 +165,26 @@ export default function Home() {
           >
             <Link
               to={`/scenes/${todayScene.id}`}
-              className="glass-card p-6 block hover:border-emerald/40 group"
+              className="glass-card p-6 block hover:border-emerald/40 group relative"
             >
+              {/* 发音按钮 */}
+              <button
+                onClick={(e) => handleSpeakScene(todayScene, e)}
+                className={`absolute top-4 right-4 w-9 h-9 rounded-full flex items-center justify-center transition-all ${
+                  speakingSceneId === todayScene.id
+                    ? 'bg-emerald/20 text-emerald animate-pulse'
+                    : 'bg-white/5 text-moon-dim hover:bg-emerald/10 hover:text-emerald'
+                }`}
+                title="朗读"
+              >
+                <Volume2 size={16} />
+              </button>
+
               <div className="flex items-start gap-5">
                 <div className="text-5xl md:text-6xl shrink-0 select-none">
                   {todayScene.icon}
                 </div>
-                <div className="flex-1 min-w-0 space-y-2">
+                <div className="flex-1 min-w-0 space-y-2 pr-10">
                   <div className="flex items-center gap-2 flex-wrap">
                     <h3 className="text-xl md:text-2xl font-bold text-moon group-hover:text-emerald transition-colors">
                       {todayScene.title}
@@ -192,7 +275,7 @@ export default function Home() {
               >
                 <Link
                   to={`/scenes/${scene.id}`}
-                  className="glass-card p-5 flex items-center gap-4 hover:border-emerald/40 group"
+                  className="glass-card p-5 flex items-center gap-4 hover:border-emerald/40 group relative"
                 >
                   <div className="text-3xl shrink-0 select-none">{scene.icon}</div>
                   <div className="flex-1 min-w-0">
@@ -208,7 +291,17 @@ export default function Home() {
                       {scene.description}
                     </p>
                   </div>
-                  <ArrowRight className="w-4 h-4 text-moon-dim group-hover:text-emerald transition-colors shrink-0" />
+                  <button
+                    onClick={(e) => handleSpeakScene(scene, e)}
+                    className={`shrink-0 w-8 h-8 rounded-full flex items-center justify-center transition-all ${
+                      speakingSceneId === scene.id
+                        ? 'bg-emerald/20 text-emerald animate-pulse'
+                        : 'bg-white/5 text-moon-dim/60 hover:bg-emerald/10 hover:text-emerald'
+                    }`}
+                    title="朗读"
+                  >
+                    <Volume2 size={14} />
+                  </button>
                 </Link>
               </motion.div>
             ))}

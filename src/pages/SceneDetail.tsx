@@ -109,6 +109,7 @@ export default function SceneDetail() {
   const [scene, setScene] = useState<SceneCourse | null>(null);
   const [loading, setLoading] = useState(true);
   const [speakingWord, setSpeakingWord] = useState<string | null>(null);
+  const [speakingExample, setSpeakingExample] = useState<string | null>(null);
 
   useEffect(() => {
     setLoading(true);
@@ -253,11 +254,43 @@ export default function SceneDetail() {
                 <p className="text-sm text-moon mt-2">{word.meaning}</p>
                 {/* 例句 */}
                 {word.example && (
-                  <div className="mt-3 pt-3 border-t border-white/5 space-y-0.5">
-                    <p className="text-xs text-moon-dim">{word.example}</p>
-                    {word.exampleTrans && (
-                      <p className="text-xs text-moon-dim/60">{word.exampleTrans}</p>
-                    )}
+                  <div className="mt-3 pt-3 border-t border-white/5">
+                    <div className="flex items-start gap-1.5">
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setSpeakingExample(word.example);
+                          speak(word.example);
+                          const audio = getAudio();
+                          if (audio) {
+                            const clear = () => {
+                              setSpeakingExample(null);
+                              audio.removeEventListener('ended', clear);
+                              audio.removeEventListener('error', clear);
+                            };
+                            audio.addEventListener('ended', clear);
+                            audio.addEventListener('error', clear);
+                          }
+                        }}
+                        className={`shrink-0 mt-0.5 w-5 h-5 rounded-full flex items-center justify-center transition-all ${
+                          speakingExample === word.example
+                            ? 'text-emerald'
+                            : 'text-moon-dim/50 hover:text-emerald'
+                        }`}
+                        title="朗读例句"
+                      >
+                        <Volume2 size={12} />
+                      </button>
+                      <div className="flex-1 min-w-0 space-y-0.5">
+                        <p className={`text-xs ${
+                          speakingExample === word.example ? 'text-emerald' : 'text-moon-dim'
+                        }`}>{word.example}</p>
+                        {word.exampleTrans && (
+                          <p className="text-xs text-moon-dim/60">{word.exampleTrans}</p>
+                        )}
+                      </div>
+                    </div>
                   </div>
                 )}
               </motion.button>
@@ -294,9 +327,40 @@ export default function SceneDetail() {
                   {grammar.explanation}
                 </p>
                 {/* 例句 */}
-                <div className="mt-3 pt-3 border-t border-white/5 space-y-1">
-                  <p className="text-sm text-moon">{grammar.example}</p>
-                  <p className="text-xs text-moon-dim">{grammar.exampleTrans}</p>
+                <div className="mt-3 pt-3 border-t border-white/5">
+                  <div className="flex items-start gap-2">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSpeakingExample(grammar.example);
+                        speak(grammar.example);
+                        const audio = getAudio();
+                        if (audio) {
+                          const clear = () => {
+                            setSpeakingExample(null);
+                            audio.removeEventListener('ended', clear);
+                            audio.removeEventListener('error', clear);
+                          };
+                          audio.addEventListener('ended', clear);
+                          audio.addEventListener('error', clear);
+                        }
+                      }}
+                      className={`shrink-0 mt-0.5 w-6 h-6 rounded-full flex items-center justify-center transition-all ${
+                        speakingExample === grammar.example
+                          ? 'bg-emerald/15 text-emerald'
+                          : 'bg-white/5 text-moon-dim hover:bg-emerald/10 hover:text-emerald'
+                      }`}
+                      title="朗读例句"
+                    >
+                      <Volume2 size={13} />
+                    </button>
+                    <div className="flex-1 min-w-0 space-y-1">
+                      <p className={`text-sm ${
+                        speakingExample === grammar.example ? 'text-emerald' : 'text-moon'
+                      }`}>{grammar.example}</p>
+                      <p className="text-xs text-moon-dim">{grammar.exampleTrans}</p>
+                    </div>
+                  </div>
                 </div>
               </motion.div>
             ))}
