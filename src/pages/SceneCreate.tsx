@@ -49,8 +49,6 @@ export default function SceneCreate() {
   const [videoTheme, setVideoTheme] = useState(0);
   const [videoSpeed, setVideoSpeed] = useState(1);
   const [videoShowExample, setVideoShowExample] = useState(true);
-  const videoTimerRef = useRef<number | null>(null);
-  const videoPlayingRef = useRef(false);
 
   useEffect(() => {
     api
@@ -221,119 +219,17 @@ ${sceneData.grammars.map((g, i) => `${i + 1}. ${g.pattern}\n   📌 ${g.explanat
   const { items: videoPlaylist, totalDuration: videoTotalDuration } = buildVideoPlaylist();
   const currentVideoItem = videoPlaylist[videoIndex];
 
-  // 时间轴相关 ref
-  const rafRef = useRef<number | null>(null);
-  const startTimeRef = useRef<number>(0);      // 播放开始时间戳
-  const pausedTimeRef = useRef<number>(0);     // 暂停时已播放时间
-  const lastIdxRef = useRef<number>(-1);       // 上一次渲染的索引，避免重复 set
-  const audioPlayedRef = useRef<Set<number>>(new Set()); // 已播放过音频的条目索引
-  const progressBarRef = useRef<HTMLDivElement>(null); // 进度条DOM，直接操作减少重渲染
-  const fullscreenProgressRef = useRef<HTMLDivElement>(null); // 全屏进度条
+  // 播放状态 ref
+  const playingRef = useRef(false);
+  const currentIdxRef = useRef(0);
+  const progressBarRef = useRef<HTMLDivElement>(null);
+  const fullscreenProgressRef = useRef<HTMLDivElement>(null);
+  const progressRafRef = useRef<number | null>(null);
+  const itemStartTimeRef = useRef(0);  // 当前条目开始播放的时间戳
+  const itemProgressRef = useRef(0);  // 暂停时当前条目的已播放进度（0~1）
 
-  // 根据时间计算当前条目索引
-  function getIndexByTime(time: number): number {
-    const scaledTime = time * videoSpeed;
-    let idx = 0;
-    let acc = 0;
-    for (let i = 0; i < videoPlaylist.length; i++) {
-      acc += videoPlaylist[i].duration;
-      if (scaledTime < acc) {
-        idx = i;
-        break;
-      }
-      idx = i;
-    }
-    return Math.min(idx, videoPlaylist.length - 1);
-  }
-
-  // 获取当前已播放时间（考虑速度）
-  function getCurrentPlayTime(): number {
-    if (!videoPlayingRef.current) return pausedTimeRef.current;
-    return pausedTimeRef.current + (performance.now() - startTimeRef.current);
-  }
-
-  // 进度百分比
-  const videoProgress = videoTotalDuration > 0
-    ? (getCurrentPlayTime() * videoSpeed / videoTotalDuration) * 100
-    : 0;
-
-  // RAF 循环驱动时间轴
-  function tick() {
-    if (!videoPlayingRef.current) return;
-
-    const now = performance.now();
-    const elapsed = pausedTimeRef.current + (now - startTimeRef.current);
-    const scaledElapsed = elapsed * videoSpeed;
-    const progressPct = videoTotalDuration > 0
-      ? Math.min(100, (scaledElapsed / videoTotalDuration) * 100)
-      : 0;
-
-    // 直接更新进度条 DOM，避免 React 重渲染
-    if (progressBarRef.current) {
-      progressBarRef.current.style.width = `${progressPct}%`;
-    }
-    if (fullscreenProgressRef.current) {
-      fullscreenProgressRef.current.style.width = `${progressPct}%`;
-    }
-
-    // 播放完毕
-    if (scaledElapsed >= videoTotalDuration) {
-      videoStop();
-      setVideoIndex(videoPlaylist.length - 1);
-      return;
-    }
-
-    // 计算当前索引
-    const idx = getIndexByTime(elapsed);
-
-    // 索引变化时更新状态 + 播音频
-    if (idx !== lastIdxRef.current) {
-      lastIdxRef.current = idx;
-      setVideoIndex(idx);
-
-      // 该条目还没播过音频，就播一下
-      if (!audioPlayedRef.current.has(idx)) {
-        audioPlayedRef.current.add(idx);
-        const item = videoPlaylist[idx];
-        if (item) {
-          if (item.type === 'word') setSpeakingWord(item.text);
-          else setSpeakingExample(item.text);
-
-          speakJa(item.text).finally(() => {
-            if (item.type === 'word') setSpeakingWord(null);
-            else setSpeakingExample(null);
-          });
-        }
-      }
-    }
-
-    rafRef.current = requestAnimationFrame(tick);
-  }
-
-  // 开始/继续播放
-  function videoPlay() {
-    if (videoPlaylist.length === 0) return;
-    if (videoPlayingRef.current) return;
-
-    // 如果已经到末尾了，从头开始
-    if (pausedTimeRef.current * videoSpeed >= videoTotalDuration) {
-      pausedTimeRef.current = 0;
-      lastIdxRef.current = -1;
-      audioPlayedRef.current.clear();
-      setVideoIndex(0);
-    }
-
-    videoPlayingRef.current = true;
-    setVideoPlaying(true);
-    startTimeRef.current = performance.now();
-    rafRef.current = requestAnimationFrame(tick);
-  }
-
-  // 更新进度条（暂停/跳转后手动同步一次）
-  function syncProgressBar() {
-    const pct = videoTotalDuration > 0
-      ? Math.min(100, (pausedTimeRef.current * videoSpeed / videoTotalDuration) * 100)
-      : 0;
+  // 更新进度条
+  function updateProgress(pct: number) {
     if (progressBarRef.current) {
       progressBarRef.current.style.width = `${pct}%`;
     }
@@ -342,34 +238,120 @@ ${sceneData.grammars.map((g, i) => `${i + 1}. ${g.pattern}\n   📌 ${g.explanat
     }
   }
 
+  // 进度条 RAF 循环（仅用于显示进度，不驱动播放）
+  function progressTick() {
+    if (!playingRef.current) return;
+
+    const item = videoPlaylist[currentIdxRef.current];
+    if (!item) {
+      videoStop();
+      return;
+    }
+
+    const elapsed = (performance.now() - itemStartTimeRef.current) * videoSpeed;
+    const itemPct = Math.min(1, elapsed / item.duration);
+    const totalPct = ((item.startTime + item.duration * itemPct) / videoTotalDuration) * 100;
+
+    updateProgress(Math.min(100, totalPct));
+    progressRafRef.current = requestAnimationFrame(progressTick);
+  }
+
+  // 播放指定索引的条目
+  function playItem(idx: number) {
+    if (idx >= videoPlaylist.length) {
+      // 播放完毕
+      videoStop();
+      return;
+    }
+
+    const item = videoPlaylist[idx];
+    if (!item) {
+      videoStop();
+      return;
+    }
+
+    currentIdxRef.current = idx;
+    setVideoIndex(idx);
+    itemStartTimeRef.current = performance.now();
+    itemProgressRef.current = 0;
+
+    // 发音状态
+    if (item.type === 'word') setSpeakingWord(item.text);
+    else setSpeakingExample(item.text);
+
+    // 播放音频
+    speakJa(item.text)
+      .catch(() => {
+        // 音频失败也继续
+      })
+      .finally(() => {
+        if (item.type === 'word') setSpeakingWord(null);
+        else setSpeakingExample(null);
+      });
+
+    // 按固定时长切换到下一条（确保节奏稳定）
+    const duration = item.duration / videoSpeed;
+    setTimeout(() => {
+      if (playingRef.current) {
+        playItem(idx + 1);
+      }
+    }, duration);
+  }
+
+  // 开始/继续播放
+  function videoPlay() {
+    if (videoPlaylist.length === 0) return;
+    if (playingRef.current) return;
+
+    playingRef.current = true;
+    setVideoPlaying(true);
+
+    // 从头开始或从当前位置继续
+    const startIdx = videoIndex >= videoPlaylist.length ? 0 : videoIndex;
+    itemStartTimeRef.current = performance.now();
+
+    // 启动进度条动画
+    progressRafRef.current = requestAnimationFrame(progressTick);
+
+    // 立即播放（在用户点击的同步回调中，确保移动端能播）
+    playItem(startIdx);
+  }
+
   // 暂停
   function videoPause() {
-    if (!videoPlayingRef.current) return;
-    videoPlayingRef.current = false;
+    if (!playingRef.current) return;
+    playingRef.current = false;
     setVideoPlaying(false);
 
-    // 记录暂停时的已播放时间
-    pausedTimeRef.current += performance.now() - startTimeRef.current;
-
-    if (rafRef.current) {
-      cancelAnimationFrame(rafRef.current);
-      rafRef.current = null;
+    // 停止进度条
+    if (progressRafRef.current) {
+      cancelAnimationFrame(progressRafRef.current);
+      progressRafRef.current = null;
     }
+
+    // 取消音频
     try {
       if ('speechSynthesis' in window) window.speechSynthesis.cancel();
     } catch { /* ignore */ }
 
-    syncProgressBar();
+    // 记录当前进度位置
+    const item = videoPlaylist[currentIdxRef.current];
+    if (item) {
+      const elapsed = (performance.now() - itemStartTimeRef.current) * videoSpeed;
+      itemProgressRef.current = Math.min(1, elapsed / item.duration);
+    }
   }
 
-  // 停止（回到开头）
+  // 停止
   function videoStop() {
-    videoPlayingRef.current = false;
+    playingRef.current = false;
     setVideoPlaying(false);
-    if (rafRef.current) {
-      cancelAnimationFrame(rafRef.current);
-      rafRef.current = null;
+
+    if (progressRafRef.current) {
+      cancelAnimationFrame(progressRafRef.current);
+      progressRafRef.current = null;
     }
+
     try {
       if ('speechSynthesis' in window) window.speechSynthesis.cancel();
     } catch { /* ignore */ }
@@ -378,12 +360,10 @@ ${sceneData.grammars.map((g, i) => `${i + 1}. ${g.pattern}\n   📌 ${g.explanat
   // 重置
   function videoReset() {
     videoStop();
-    pausedTimeRef.current = 0;
-    lastIdxRef.current = -1;
-    audioPlayedRef.current.clear();
+    currentIdxRef.current = 0;
     setVideoIndex(0);
-    // 延迟一帧同步进度条（确保DOM已挂载）
-    requestAnimationFrame(() => syncProgressBar());
+    itemProgressRef.current = 0;
+    requestAnimationFrame(() => updateProgress(0));
   }
 
   // 下一个
@@ -412,18 +392,26 @@ ${sceneData.grammars.map((g, i) => `${i + 1}. ${g.pattern}\n   📌 ${g.explanat
   // 跳转到指定条目
   function videoSeekTo(idx: number) {
     if (idx < 0 || idx >= videoPlaylist.length) return;
-    const startTime = videoPlaylist[idx].startTime;
-    pausedTimeRef.current = startTime / videoSpeed;
-    startTimeRef.current = performance.now();
-    lastIdxRef.current = -1;
-    // 清掉后面已播放的标记，以便重新播放
-    for (let i = idx; i < videoPlaylist.length; i++) {
-      audioPlayedRef.current.delete(i);
-    }
-    setVideoIndex(idx);
-    syncProgressBar();
 
-    if (!videoPlayingRef.current) {
+    const wasPlaying = playingRef.current;
+    // 先停止当前播放
+    videoStop();
+
+    currentIdxRef.current = idx;
+    setVideoIndex(idx);
+    itemProgressRef.current = 0;
+
+    // 更新进度条
+    const item = videoPlaylist[idx];
+    if (item && videoTotalDuration > 0) {
+      updateProgress((item.startTime / videoTotalDuration) * 100);
+    }
+
+    // 如果之前在播放，继续播放
+    if (wasPlaying) {
+      videoPlay();
+    } else {
+      // 暂停状态下跳转，也播一下音频（用户交互触发，移动端可播）
       const item = videoPlaylist[idx];
       if (item) {
         if (item.type === 'word') setSpeakingWord(item.text);
@@ -1146,30 +1134,30 @@ ${sceneData.grammars.map((g, i) => `${i + 1}. ${g.pattern}\n   📌 ${g.explanat
                 </div>
 
                 {/* 迷你控制栏 */}
-                <div className="absolute bottom-0 left-0 right-0 p-3 bg-black/30 backdrop-blur-sm flex items-center justify-between">
+                <div className="absolute bottom-0 left-0 right-0 p-2 bg-black/30 backdrop-blur-sm flex items-center justify-between">
                   <button
                     onClick={videoPrev}
                     disabled={videoIndex === 0}
-                    className={`w-8 h-8 rounded-full flex items-center justify-center transition-all ${
+                    className={`w-10 h-10 rounded-full flex items-center justify-center transition-all ${
                       videoIndex === 0
                         ? 'bg-white/10 text-white/30 cursor-not-allowed'
                         : 'bg-white/20 text-white hover:bg-white/30'
                     }`}
                   >
-                    <SkipBack size={14} />
+                    <SkipBack size={16} />
                   </button>
                   <button
                     onClick={toggleVideoPlay}
-                    className={`w-10 h-10 rounded-full flex items-center justify-center text-white shadow-lg transition-all ${
+                    className={`w-12 h-12 rounded-full flex items-center justify-center text-white shadow-lg transition-all ${
                       videoPlaying ? 'bg-red-500 hover:bg-red-600' : 'bg-emerald-500 hover:bg-emerald-600'
                     }`}
                   >
-                    {videoPlaying ? <Pause size={16} /> : <Play size={16} className="ml-0.5" />}
+                    {videoPlaying ? <Pause size={18} /> : <Play size={18} className="ml-0.5" />}
                   </button>
                   <button
                     onClick={videoNext}
                     disabled={videoIndex >= videoPlaylist.length - 1}
-                    className={`w-8 h-8 rounded-full flex items-center justify-center transition-all ${
+                    className={`w-10 h-10 rounded-full flex items-center justify-center transition-all ${
                       videoIndex >= videoPlaylist.length - 1
                         ? 'bg-white/10 text-white/30 cursor-not-allowed'
                         : 'bg-white/20 text-white hover:bg-white/30'
