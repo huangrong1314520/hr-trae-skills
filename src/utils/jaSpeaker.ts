@@ -142,10 +142,8 @@ function playEmbeddedAudio(audio: HTMLAudioElement, src: string): Promise<void> 
 }
 
 /* ========== 主发音函数 ========== */
-// 策略：
-// - 短文本（单词，<=10字符）：优先内嵌音频（秒播、声调准确）
-// - 长文本（例句，>10字符）：优先浏览器语音合成（更自然、有语调变化和停顿）
-//   浏览器语音不可用时回退内嵌音频
+// 策略：单词和例句都优先使用内嵌音频（已100%覆盖，秒播、声调准确）
+// 内嵌音频失败时回退到浏览器语音合成
 export function speakJa(text: string): Promise<void> {
   const audio = getAudio();
 
@@ -157,21 +155,9 @@ export function speakJa(text: string): Promise<void> {
     if ('speechSynthesis' in window) window.speechSynthesis.cancel();
   } catch { /* ignore */ }
 
-  const isLongText = text.length > 10;
   const embeddedUrl = getJaAudioDataUri(text);
 
-  // 长文本（例句）：优先浏览器语音合成（更自然，有语调变化和停顿）
-  if (isLongText) {
-    return browserSpeak(text).catch(() => {
-      // 浏览器语音失败，回退内嵌音频
-      if (embeddedUrl && audio) {
-        return playEmbeddedAudio(audio, embeddedUrl);
-      }
-      return Promise.reject(new Error('no audio available'));
-    });
-  }
-
-  // 短文本（单词）：优先内嵌音频（秒播、声调准确）
+  // 优先内嵌音频（单词和例句都有，100%覆盖）
   if (embeddedUrl && audio) {
     return playEmbeddedAudio(audio, embeddedUrl).catch(() => {
       // 内嵌音频失败，回退浏览器语音
@@ -179,7 +165,7 @@ export function speakJa(text: string): Promise<void> {
     });
   }
 
-  // 无内嵌音频，直接用浏览器语音
+  // 无内嵌音频，用浏览器语音合成兜底
   return browserSpeak(text);
 }
 
