@@ -264,7 +264,7 @@ export default function SceneDetail() {
       {/* 底部操作区 */}
       <div className="flex justify-center pt-2 pb-4">
         <Link
-          to="/create/video"
+          to={`/scenes/${scene.id}/create`}
           className="btn-glow px-8 py-3 flex items-center gap-2"
         >
           <Sparkles size={18} />
