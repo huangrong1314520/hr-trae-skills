@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
 import { api, LANG_CONFIG, type SceneCourse } from '@/utils/api';
@@ -33,18 +33,30 @@ export default function Home() {
   // 获取场景课程列表（首页无需登录检查，直接展示）
   useEffect(() => {
     api
-      .get<{ success: boolean; data: SceneCourse[] }>('/scenes')
+      .get<SceneCourse[]>('/scenes')
       .then((res) => {
-        if (res.success) setScenes(res.data || []);
+        const list = Array.isArray(res)
+          ? res
+          : (res as unknown as { success: boolean; data: SceneCourse[] }).data ?? [];
+        setScenes(list);
       })
       .catch(() => setScenes([]))
       .finally(() => setLoading(false));
   }, []);
 
-  // 今日推荐：取第一个场景
-  const todayScene = scenes[0];
-  // 预览：前 2 个场景课程
-  const previewScenes = scenes.slice(0, 2);
+  // 今日推荐：每天随机一个场景
+  const todayScene = useMemo(() => {
+    if (scenes.length === 0) return undefined;
+    const today = new Date().toDateString();
+    let hash = 0;
+    for (let i = 0; i < today.length; i++) {
+      hash = ((hash << 5) - hash) + today.charCodeAt(i);
+      hash |= 0;
+    }
+    return scenes[Math.abs(hash) % scenes.length];
+  }, [scenes]);
+  // 预览：前 4 个场景课程
+  const previewScenes = scenes.slice(0, 4);
 
   return (
     <div className="page-enter space-y-10">

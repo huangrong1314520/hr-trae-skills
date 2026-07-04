@@ -1,4 +1,4 @@
-const CACHE_NAME = 'langnight-v2';
+const CACHE_NAME = 'langnight-v5';
 const urlsToCache = [
   '/',
   '/index.html',
@@ -27,12 +27,11 @@ self.addEventListener('activate', (event) => {
   self.clients.claim();
 });
 
-// Fetch
+// Fetch：网络优先，避免手机端长期读取旧版本 JS/CSS
 self.addEventListener('fetch', (event) => {
   if (event.request.method !== 'GET') return;
   event.respondWith(
-    caches.match(event.request).then((cached) => {
-      const fetchPromise = fetch(event.request)
+    fetch(event.request)
         .then((response) => {
           if (response && response.status === 200) {
             const clone = response.clone();
@@ -40,8 +39,6 @@ self.addEventListener('fetch', (event) => {
           }
           return response;
         })
-        .catch(() => cached);
-      return cached || fetchPromise;
-    })
+        .catch(() => caches.match(event.request))
   );
 });

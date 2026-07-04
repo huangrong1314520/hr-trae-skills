@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback, PointerEvent as RPointerEvent } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { api, LANG_CONFIG } from '@/utils/api';
 import { Eraser, RotateCcw, Check, Palette, ArrowLeft, Trash2 } from 'lucide-react';
 
@@ -69,28 +69,55 @@ export default function Write() {
     }
   }, [selectedChar]);
 
-  const getCanvasPoint = useCallback((e: RPointerEvent<HTMLDivElement>) => {
+  const getCanvasPoint = useCallback((clientX: number, clientY: number) => {
     if (!canvasRef.current) return { x: 0, y: 0 };
     const rect = canvasRef.current.getBoundingClientRect();
-    return { x: e.clientX - rect.left, y: e.clientY - rect.top };
+    return { x: clientX - rect.left, y: clientY - rect.top };
   }, []);
 
-  const handlePointerDown = useCallback((e: RPointerEvent<HTMLDivElement>) => {
+  // 鼠标事件（桌面端）
+  const handleMouseDown = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
     if (!selectedChar) return;
-    (e.target as HTMLDivElement).setPointerCapture(e.pointerId);
-    const point = getCanvasPoint(e);
+    e.preventDefault();
+    const point = getCanvasPoint(e.clientX, e.clientY);
     const color = isErasing ? '#0f0f1a' : penColor;
     const width = isErasing ? 20 : penWidth;
     setCurrentStroke({ points: [point], color, width });
   }, [selectedChar, isErasing, penColor, penWidth, getCanvasPoint]);
 
-  const handlePointerMove = useCallback((e: RPointerEvent<HTMLDivElement>) => {
+  const handleMouseMove = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
     if (!currentStroke) return;
-    const point = getCanvasPoint(e);
+    e.preventDefault();
+    const point = getCanvasPoint(e.clientX, e.clientY);
     setCurrentStroke((prev) => prev ? { ...prev, points: [...prev.points, point] } : null);
   }, [currentStroke, getCanvasPoint]);
 
-  const handlePointerUp = useCallback(() => {
+  const handleMouseUp = useCallback(() => {
+    if (!currentStroke) return;
+    setStrokes((prev) => [...prev, currentStroke]);
+    setCurrentStroke(null);
+  }, [currentStroke]);
+
+  // 触摸事件（移动端）
+  const handleTouchStart = useCallback((e: React.TouchEvent<HTMLDivElement>) => {
+    if (!selectedChar) return;
+    e.preventDefault();
+    const touch = e.touches[0];
+    const point = getCanvasPoint(touch.clientX, touch.clientY);
+    const color = isErasing ? '#0f0f1a' : penColor;
+    const width = isErasing ? 20 : penWidth;
+    setCurrentStroke({ points: [point], color, width });
+  }, [selectedChar, isErasing, penColor, penWidth, getCanvasPoint]);
+
+  const handleTouchMove = useCallback((e: React.TouchEvent<HTMLDivElement>) => {
+    if (!currentStroke) return;
+    e.preventDefault();
+    const touch = e.touches[0];
+    const point = getCanvasPoint(touch.clientX, touch.clientY);
+    setCurrentStroke((prev) => prev ? { ...prev, points: [...prev.points, point] } : null);
+  }, [currentStroke, getCanvasPoint]);
+
+  const handleTouchEnd = useCallback(() => {
     if (!currentStroke) return;
     setStrokes((prev) => [...prev, currentStroke]);
     setCurrentStroke(null);
@@ -182,11 +209,14 @@ export default function Write() {
           {/* Canvas */}
           <div
             ref={canvasRef}
-            className="relative w-full aspect-[4/3] rounded-xl bg-night/60 border border-emerald/10 cursor-crosshair overflow-hidden touch-none"
-            onPointerDown={handlePointerDown}
-            onPointerMove={handlePointerMove}
-            onPointerUp={handlePointerUp}
-            onPointerLeave={handlePointerUp}
+            className="relative w-full aspect-[4/3] rounded-xl bg-night/60 border border-emerald/10 cursor-crosshair overflow-hidden touch-none select-none"
+            onMouseDown={handleMouseDown}
+            onMouseMove={handleMouseMove}
+            onMouseUp={handleMouseUp}
+            onMouseLeave={handleMouseUp}
+            onTouchStart={handleTouchStart}
+            onTouchMove={handleTouchMove}
+            onTouchEnd={handleTouchEnd}
           >
             <svg
               className="absolute inset-0 w-full h-full"

@@ -46,11 +46,11 @@ export default function Layout() {
       <Particles />
       <Sidebar />
       <main
-        className={`transition-all duration-300 ease-in-out relative z-10 pb-20 md:pb-0
-          ${sidebarCollapsed ? 'md:ml-16' : 'md:ml-56'}
-        `}
+        className="transition-all duration-300 ease-in-out relative z-10 pb-20 md:pb-0
+          md:ml-16 lg:ml-56
+        "
       >
-        <div className="min-h-screen p-4 md:p-6">
+        <div className="min-h-screen px-4 py-4 md:p-6">
           <Outlet />
         </div>
       </main>

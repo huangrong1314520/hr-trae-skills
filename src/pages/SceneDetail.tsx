@@ -2,16 +2,88 @@ import { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { api, type SceneCourse } from '@/utils/api';
+import { getJaAudioDataUri } from '@/utils/audioData';
 import { ArrowLeft, BookOpen, Languages, Volume2, Sparkles } from 'lucide-react';
 
-// 朗读日语单词
+// 日语发音工具 — 优先播放随站点部署的本地 MP3，避免手机端拦截第三方音频
+// 单例 Audio 元素，避免重复创建
+let audioEl: HTMLAudioElement | null = null;
+
+function getAudio(): HTMLAudioElement | null {
+  if (typeof window === 'undefined') return null;
+  if (!audioEl) {
+    audioEl = new Audio();
+    audioEl.preload = 'auto';
+    audioEl.volume = 1;
+  }
+  return audioEl;
+}
+
+function audioFileName(text: string) {
+  return Array.from(text).map((char) => char.codePointAt(0)?.toString(16)).join('-');
+}
+
 function speak(text: string) {
-  if (typeof window === 'undefined' || !('speechSynthesis' in window)) return;
-  const utterance = new SpeechSynthesisUtterance(text);
-  utterance.lang = 'ja-JP';
-  utterance.rate = 0.9;
-  window.speechSynthesis.cancel();
-  window.speechSynthesis.speak(utterance);
+  const audio = getAudio();
+  if (!audio) return;
+
+  // 停止当前播放
+  try { audio.pause(); } catch { /* ignore */ }
+  audio.currentTime = 0;
+
+  // 优先使用内嵌音频，完全不依赖静态文件路径或第三方服务
+  const embeddedUrl = getJaAudioDataUri(text);
+  if (embeddedUrl) {
+    audio.src = embeddedUrl;
+    const embeddedPromise = audio.play();
+    if (embeddedPromise && typeof embeddedPromise.catch === 'function') {
+      embeddedPromise.catch(() => {
+        try {
+          if ('speechSynthesis' in window) {
+            const synth = window.speechSynthesis;
+            synth.cancel();
+            const u = new SpeechSynthesisUtterance(text);
+            u.lang = 'ja-JP';
+            u.rate = 0.85;
+            synth.speak(u);
+          }
+        } catch { /* ignore */ }
+      });
+    }
+    return;
+  }
+
+  // 本地 MP3：public/audio/ja/*.mp3 会随站点部署
+  const localUrl = `${import.meta.env.BASE_URL}audio/ja/${audioFileName(text)}.mp3`;
+  const remoteUrl = `https://fanyi.baidu.com/gettts?lan=jp&text=${encodeURIComponent(text)}&spd=3&source=web`;
+  const url = localUrl;
+  audio.src = url;
+
+  // 同步调用 play，确保在用户手势上下文中
+  const playPromise = audio.play();
+  if (playPromise && typeof playPromise.catch === 'function') {
+    playPromise.catch(() => {
+      // 本地文件异常时，先回退百度 TTS，再回退浏览器语音
+      try {
+        audio.src = remoteUrl;
+        const retry = audio.play();
+        if (retry && typeof retry.catch === 'function') {
+          retry.catch(() => {
+            try {
+              if ('speechSynthesis' in window) {
+                const synth = window.speechSynthesis;
+                synth.cancel();
+                const u = new SpeechSynthesisUtterance(text);
+                u.lang = 'ja-JP';
+                u.rate = 0.85;
+                synth.speak(u);
+              }
+            } catch { /* ignore */ }
+          });
+        }
+      } catch { /* ignore */ }
+    });
+  }
 }
 
 // 详情骨架屏
@@ -36,6 +108,7 @@ export default function SceneDetail() {
   const navigate = useNavigate();
   const [scene, setScene] = useState<SceneCourse | null>(null);
   const [loading, setLoading] = useState(true);
+  const [speakingWord, setSpeakingWord] = useState<string | null>(null);
 
   useEffect(() => {
     setLoading(true);
@@ -133,13 +206,37 @@ export default function SceneDetail() {
             {scene.words.map((word, i) => (
               <motion.button
                 key={i}
+                type="button"
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: i * 0.05, duration: 0.4 }}
-                onClick={() => speak(word.word)}
-                className="glass-card p-4 text-left relative group hover:border-emerald/40"
+                onClick={() => {
+                  setSpeakingWord(word.word);
+                  speak(word.word);
+                  const audio = getAudio();
+                  if (audio) {
+                    const clear = () => {
+                      setSpeakingWord(null);
+                      audio.removeEventListener('ended', clear);
+                      audio.removeEventListener('error', clear);
+                    };
+                    audio.addEventListener('ended', clear);
+                    audio.addEventListener('error', clear);
+                  }
+                }}
+                className={`glass-card p-4 text-left relative group transition-all duration-200 ${
+                  speakingWord === word.word
+                    ? 'border-emerald/60 ring-1 ring-emerald/30'
+                    : 'hover:border-emerald/40'
+                }`}
               >
-                <Volume2 className="absolute top-3 right-3 w-4 h-4 text-moon-dim/40 group-hover:text-emerald transition-colors" />
+                <Volume2
+                  className={`absolute top-3 right-3 w-4 h-4 transition-all duration-200 pointer-events-none ${
+                    speakingWord === word.word
+                      ? 'text-emerald animate-pulse'
+                      : 'text-moon-dim/40 group-hover:text-emerald'
+                  }`}
+                />
                 {/* 片假名注音 */}
                 <p className="text-xs text-emerald mb-1">{word.reading}</p>
                 {/* 日语原文 */}
