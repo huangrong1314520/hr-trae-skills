@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useParams, useNavigate } from 'react-router-dom';
 import { api, sceneCourses, type SceneCourse } from '@/utils/api';
 import { speakJa } from '@/utils/jaSpeaker';
+import { generateSceneVideo, downloadBlob, videoThemes as canvasVideoThemes } from '@/utils/videoGenerator';
 import {
   Volume2,
   Sparkles,
@@ -49,6 +50,8 @@ export default function SceneCreate() {
   const [videoTheme, setVideoTheme] = useState(0);
   const [videoSpeed, setVideoSpeed] = useState(1);
   const [videoShowExample, setVideoShowExample] = useState(true);
+  const [generating, setGenerating] = useState(false);
+  const [generateProgress, setGenerateProgress] = useState(0);
 
   useEffect(() => {
     try {
@@ -451,6 +454,50 @@ ${sceneData.grammars.map((g, i) => `${i + 1}. ${g.pattern}\n   📌 ${g.explanat
     } else {
       setVideoFullscreen(false);
       videoStop();
+    }
+  }
+
+  // 生成视频
+  async function handleGenerateVideo() {
+    if (!scene || generating) return;
+
+    // 先停止当前播放
+    videoStop();
+
+    setGenerating(true);
+    setGenerateProgress(0);
+
+    try {
+      const items = videoPlaylist.map((item) => ({
+        type: item.type as 'word' | 'example',
+        text: item.text,
+        reading: item.reading,
+        meaning: item.meaning,
+        trans: item.trans,
+        duration: item.duration / videoSpeed,
+      }));
+
+      const theme = canvasVideoThemes[videoTheme] || canvasVideoThemes[0];
+
+      const blob = await generateSceneVideo({
+        items,
+        theme,
+        sceneTitle: scene.title,
+        sceneIcon: scene.icon || '🌸',
+        totalWords: scene.words.length,
+        fps: 30,
+        width: 720,
+        height: 1280,
+        onProgress: (pct) => setGenerateProgress(pct),
+        audioEnabled: true,
+      });
+
+      downloadBlob(blob, `${scene.title}-日语学习.webm`);
+    } catch (e) {
+      console.error('Generate video failed:', e);
+      alert('视频生成失败，请重试或使用全屏录屏方式');
+    } finally {
+      setGenerating(false);
     }
   }
 
@@ -1035,21 +1082,56 @@ ${sceneData.grammars.map((g, i) => `${i + 1}. ${g.pattern}\n   📌 ${g.explanat
               </div>
 
               {/* 操作按钮 */}
-              <div className="flex gap-3">
+              <div className="space-y-2">
+                <div className="flex gap-3">
+                  <button
+                    onClick={videoReset}
+                    className="flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-lg border border-white/20 text-moon-dim hover:border-emerald/50 hover:text-emerald transition-all"
+                  >
+                    <RefreshCw size={16} />
+                    重置
+                  </button>
+                  <button
+                    onClick={toggleFullscreen}
+                    className="flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-lg bg-emerald/10 text-emerald hover:bg-emerald/20 transition-all"
+                  >
+                    <Maximize2 size={16} />
+                    全屏播放
+                  </button>
+                </div>
                 <button
-                  onClick={videoReset}
-                  className="flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-lg border border-white/20 text-moon-dim hover:border-emerald/50 hover:text-emerald transition-all"
+                  onClick={handleGenerateVideo}
+                  disabled={generating}
+                  className={`w-full flex items-center justify-center gap-2 px-4 py-3 rounded-lg transition-all ${
+                    generating
+                      ? 'bg-gray-500/30 text-gray-400 cursor-not-allowed'
+                      : 'bg-gradient-to-r from-pink-500 to-purple-500 text-white hover:from-pink-600 hover:to-purple-600 shadow-lg'
+                  }`}
                 >
-                  <RefreshCw size={16} />
-                  重置
+                  {generating ? (
+                    <>
+                      <motion.div
+                        animate={{ rotate: 360 }}
+                        transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
+                        className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full"
+                      />
+                      生成中 {Math.floor(generateProgress)}%
+                    </>
+                  ) : (
+                    <>
+                      <Film size={16} />
+                      生成视频并下载
+                    </>
+                  )}
                 </button>
-                <button
-                  onClick={toggleFullscreen}
-                  className="flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-lg bg-emerald/10 text-emerald hover:bg-emerald/20 transition-all"
-                >
-                  <Maximize2 size={16} />
-                  全屏播放
-                </button>
+                {generating && (
+                  <div className="w-full h-2 bg-white/10 rounded-full overflow-hidden">
+                    <div
+                      className="h-full bg-gradient-to-r from-pink-500 to-purple-500 transition-all duration-300"
+                      style={{ width: `${generateProgress}%` }}
+                    />
+                  </div>
+                )}
               </div>
             </div>
 
