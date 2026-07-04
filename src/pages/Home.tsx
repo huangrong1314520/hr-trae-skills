@@ -1,63 +1,9 @@
-import { useEffect, useState, useMemo, useRef } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { motion } from 'framer-motion';
 import { Link, useNavigate } from 'react-router-dom';
 import { api, LANG_CONFIG, type SceneCourse } from '@/utils/api';
-import { getJaAudioDataUri } from '@/utils/audioData';
+import { speakJa, hasEmbeddedAudio } from '@/utils/jaSpeaker';
 import { Clapperboard, Languages, Pencil, ArrowRight, Sparkles, Calendar, Volume2 } from 'lucide-react';
-
-// 日语发音工具（与 SceneDetail 页相同的实现）
-let homeAudioEl: HTMLAudioElement | null = null;
-
-function getHomeAudio(): HTMLAudioElement | null {
-  if (typeof window === 'undefined') return null;
-  if (!homeAudioEl) {
-    homeAudioEl = new Audio();
-    homeAudioEl.preload = 'auto';
-    homeAudioEl.volume = 1;
-  }
-  return homeAudioEl;
-}
-
-function speakJa(text: string) {
-  const audio = getHomeAudio();
-  if (!audio) return;
-  try { audio.pause(); } catch { /* ignore */ }
-  audio.currentTime = 0;
-  try {
-    if ('speechSynthesis' in window) window.speechSynthesis.cancel();
-  } catch { /* ignore */ }
-
-  // 优先使用内嵌 base64 音频（本地，秒播）
-  const embeddedUrl = getJaAudioDataUri(text);
-  if (embeddedUrl) {
-    audio.src = embeddedUrl;
-    const p = audio.play();
-    if (p && typeof p.catch === 'function') {
-      p.catch(() => fallbackBrowserSpeech(text));
-    }
-    return;
-  }
-
-  // 没有内嵌音频时，直接使用浏览器内置语音合成（最可靠，不依赖网络）
-  fallbackBrowserSpeech(text);
-}
-
-function fallbackBrowserSpeech(text: string) {
-  try {
-    if ('speechSynthesis' in window) {
-      const synth = window.speechSynthesis;
-      synth.cancel();
-      const u = new SpeechSynthesisUtterance(text);
-      u.lang = 'ja-JP';
-      u.rate = 0.85;
-      // 尝试使用日语语音引擎
-      const voices = synth.getVoices();
-      const jaVoice = voices.find((v) => v.lang.startsWith('ja'));
-      if (jaVoice) u.voice = jaVoice;
-      synth.speak(u);
-    }
-  } catch { /* ignore */ }
-}
 
 // 创作工坊入口配置
 const WORKSHOPS = [
@@ -87,26 +33,13 @@ export default function Home() {
   const [loading, setLoading] = useState(true);
   const [speakingSceneId, setSpeakingSceneId] = useState<string | null>(null);
 
-  // 朗读场景：优先找有内嵌音频的单词，否则用浏览器语音合成
+  // 朗读场景：优先找有内嵌音频的单词，否则用第一个单词（走浏览器语音）
   const handleSpeakScene = (scene: SceneCourse) => {
-    // 找第一个有内嵌音频的单词，没有就用第一个单词
-    const wordWithAudio = scene.words?.find((w) => getJaAudioDataUri(w.word));
+    const wordWithAudio = scene.words?.find((w) => hasEmbeddedAudio(w.word));
     const text = wordWithAudio?.word || scene.words?.[0]?.word || scene.title;
     setSpeakingSceneId(scene.id);
-    speakJa(text);
-
-    const audio = getHomeAudio();
-    const clear = () => {
-      setSpeakingSceneId(null);
-      audio?.removeEventListener('ended', clear);
-      audio?.removeEventListener('error', clear);
-    };
-    if (audio) {
-      audio.addEventListener('ended', clear);
-      audio.addEventListener('error', clear);
-    }
-    // 兜底定时器
-    setTimeout(() => setSpeakingSceneId(null), 3000);
+    speakJa(text)
+      .finally(() => setSpeakingSceneId(null));
   };
 
   // 获取场景课程列表（首页无需登录检查，直接展示）

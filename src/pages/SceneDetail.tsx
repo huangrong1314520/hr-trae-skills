@@ -2,67 +2,8 @@ import { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { api, type SceneCourse } from '@/utils/api';
-import { getJaAudioDataUri } from '@/utils/audioData';
+import { speakJa } from '@/utils/jaSpeaker';
 import { ArrowLeft, BookOpen, Languages, Volume2, Sparkles } from 'lucide-react';
-
-// 日语发音工具 — 优先播放随站点部署的本地 MP3，避免手机端拦截第三方音频
-// 单例 Audio 元素，避免重复创建
-let audioEl: HTMLAudioElement | null = null;
-
-function getAudio(): HTMLAudioElement | null {
-  if (typeof window === 'undefined') return null;
-  if (!audioEl) {
-    audioEl = new Audio();
-    audioEl.preload = 'auto';
-    audioEl.volume = 1;
-  }
-  return audioEl;
-}
-
-function speak(text: string) {
-  const audio = getAudio();
-  if (!audio) return;
-
-  // 停止当前播放，并取消浏览器语音队列
-  try { audio.pause(); } catch { /* ignore */ }
-  audio.currentTime = 0;
-  try {
-    if ('speechSynthesis' in window) window.speechSynthesis.cancel();
-  } catch { /* ignore */ }
-
-  // 优先使用内嵌 base64 音频（本地，秒播）
-  const embeddedUrl = getJaAudioDataUri(text);
-  if (embeddedUrl) {
-    audio.src = embeddedUrl;
-    const p = audio.play();
-    if (p && typeof p.catch === 'function') {
-      p.catch(() => browserSpeak(text));
-    }
-    return;
-  }
-
-  // 没有内嵌音频时（例句等），直接使用浏览器内置语音合成
-  // 这是最可靠的方案，不依赖网络，且在用户手势上下文中调用
-  browserSpeak(text);
-}
-
-// 浏览器内置语音合成（日语）
-function browserSpeak(text: string) {
-  try {
-    if ('speechSynthesis' in window) {
-      const synth = window.speechSynthesis;
-      synth.cancel();
-      const u = new SpeechSynthesisUtterance(text);
-      u.lang = 'ja-JP';
-      u.rate = 0.85;
-      // 尝试使用日语语音引擎
-      const voices = synth.getVoices();
-      const jaVoice = voices.find((v) => v.lang.startsWith('ja'));
-      if (jaVoice) u.voice = jaVoice;
-      synth.speak(u);
-    }
-  } catch { /* ignore */ }
-}
 
 // 详情骨架屏
 function DetailSkeleton() {
@@ -191,17 +132,8 @@ export default function SceneDetail() {
                 onClick={() => {
                   setSpeakingExample(null);
                   setSpeakingWord(word.word);
-                  speak(word.word);
-                  const audio = getAudio();
-                  if (audio) {
-                    const clear = () => {
-                      setSpeakingWord(null);
-                      audio.removeEventListener('ended', clear);
-                      audio.removeEventListener('error', clear);
-                    };
-                    audio.addEventListener('ended', clear);
-                    audio.addEventListener('error', clear);
-                  }
+                  speakJa(word.word)
+                    .finally(() => setSpeakingWord(null));
                 }}
                 className={`glass-card p-4 text-left relative group cursor-pointer transition-all duration-200 ${
                   speakingWord === word.word
@@ -240,9 +172,8 @@ export default function SceneDetail() {
                           e.stopPropagation();
                           setSpeakingWord(null);
                           setSpeakingExample(word.example);
-                          speak(word.example);
-                          // 浏览器语音合成无 ended 事件，用定时器清除状态
-                          setTimeout(() => setSpeakingExample(null), 3000);
+                          speakJa(word.example)
+                            .finally(() => setSpeakingExample(null));
                         }}
                         className={`shrink-0 mt-0.5 w-6 h-6 rounded-full flex items-center justify-center transition-all ${
                           speakingExample === word.example
@@ -304,9 +235,8 @@ export default function SceneDetail() {
                       type="button"
                       onClick={() => {
                         setSpeakingExample(grammar.example);
-                        speak(grammar.example);
-                        // 浏览器语音合成无 ended 事件，用定时器清除状态
-                        setTimeout(() => setSpeakingExample(null), 3000);
+                        speakJa(grammar.example)
+                          .finally(() => setSpeakingExample(null));
                       }}
                       className={`shrink-0 mt-0.5 w-6 h-6 rounded-full flex items-center justify-center transition-all ${
                         speakingExample === grammar.example
