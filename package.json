@@ -6,9 +6,12 @@
   "scripts": {
     "client:dev": "vite",
     "build": "tsc -b && vite build",
+    "prebuild": "node scripts/check-audio-coverage.cjs",
     "lint": "eslint .",
     "preview": "vite preview",
     "check": "tsc --noEmit",
+    "check:audio": "node scripts/check-audio-coverage.cjs",
+    "generate:audio": "node scripts/generate-audio.cjs",
     "server:dev": "nodemon",
     "dev": "concurrently \"npm run client:dev\" \"npm run server:dev\""
   },
