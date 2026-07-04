@@ -19,71 +19,49 @@ function getAudio(): HTMLAudioElement | null {
   return audioEl;
 }
 
-function audioFileName(text: string) {
-  return Array.from(text).map((char) => char.codePointAt(0)?.toString(16)).join('-');
-}
-
 function speak(text: string) {
   const audio = getAudio();
   if (!audio) return;
 
-  // 停止当前播放
+  // 停止当前播放，并取消浏览器语音队列
   try { audio.pause(); } catch { /* ignore */ }
   audio.currentTime = 0;
+  try {
+    if ('speechSynthesis' in window) window.speechSynthesis.cancel();
+  } catch { /* ignore */ }
 
-  // 优先使用内嵌音频，完全不依赖静态文件路径或第三方服务
+  // 优先使用内嵌 base64 音频（本地，秒播）
   const embeddedUrl = getJaAudioDataUri(text);
   if (embeddedUrl) {
     audio.src = embeddedUrl;
-    const embeddedPromise = audio.play();
-    if (embeddedPromise && typeof embeddedPromise.catch === 'function') {
-      embeddedPromise.catch(() => {
-        try {
-          if ('speechSynthesis' in window) {
-            const synth = window.speechSynthesis;
-            synth.cancel();
-            const u = new SpeechSynthesisUtterance(text);
-            u.lang = 'ja-JP';
-            u.rate = 0.85;
-            synth.speak(u);
-          }
-        } catch { /* ignore */ }
-      });
+    const p = audio.play();
+    if (p && typeof p.catch === 'function') {
+      p.catch(() => browserSpeak(text));
     }
     return;
   }
 
-  // 本地 MP3：public/audio/ja/*.mp3 会随站点部署
-  const localUrl = `${import.meta.env.BASE_URL}audio/ja/${audioFileName(text)}.mp3`;
-  const remoteUrl = `https://fanyi.baidu.com/gettts?lan=jp&text=${encodeURIComponent(text)}&spd=3&source=web`;
-  const url = localUrl;
-  audio.src = url;
+  // 没有内嵌音频时（例句等），直接使用浏览器内置语音合成
+  // 这是最可靠的方案，不依赖网络，且在用户手势上下文中调用
+  browserSpeak(text);
+}
 
-  // 同步调用 play，确保在用户手势上下文中
-  const playPromise = audio.play();
-  if (playPromise && typeof playPromise.catch === 'function') {
-    playPromise.catch(() => {
-      // 本地文件异常时，先回退百度 TTS，再回退浏览器语音
-      try {
-        audio.src = remoteUrl;
-        const retry = audio.play();
-        if (retry && typeof retry.catch === 'function') {
-          retry.catch(() => {
-            try {
-              if ('speechSynthesis' in window) {
-                const synth = window.speechSynthesis;
-                synth.cancel();
-                const u = new SpeechSynthesisUtterance(text);
-                u.lang = 'ja-JP';
-                u.rate = 0.85;
-                synth.speak(u);
-              }
-            } catch { /* ignore */ }
-          });
-        }
-      } catch { /* ignore */ }
-    });
-  }
+// 浏览器内置语音合成（日语）
+function browserSpeak(text: string) {
+  try {
+    if ('speechSynthesis' in window) {
+      const synth = window.speechSynthesis;
+      synth.cancel();
+      const u = new SpeechSynthesisUtterance(text);
+      u.lang = 'ja-JP';
+      u.rate = 0.85;
+      // 尝试使用日语语音引擎
+      const voices = synth.getVoices();
+      const jaVoice = voices.find((v) => v.lang.startsWith('ja'));
+      if (jaVoice) u.voice = jaVoice;
+      synth.speak(u);
+    }
+  } catch { /* ignore */ }
 }
 
 // 详情骨架屏
@@ -205,13 +183,13 @@ export default function SceneDetail() {
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {scene.words.map((word, i) => (
-              <motion.button
+              <motion.div
                 key={i}
-                type="button"
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: i * 0.05, duration: 0.4 }}
                 onClick={() => {
+                  setSpeakingExample(null);
                   setSpeakingWord(word.word);
                   speak(word.word);
                   const audio = getAudio();
@@ -225,7 +203,7 @@ export default function SceneDetail() {
                     audio.addEventListener('error', clear);
                   }
                 }}
-                className={`glass-card p-4 text-left relative group transition-all duration-200 ${
+                className={`glass-card p-4 text-left relative group cursor-pointer transition-all duration-200 ${
                   speakingWord === word.word
                     ? 'border-emerald/60 ring-1 ring-emerald/30'
                     : 'hover:border-emerald/40'
@@ -260,27 +238,20 @@ export default function SceneDetail() {
                         type="button"
                         onClick={(e) => {
                           e.stopPropagation();
+                          setSpeakingWord(null);
                           setSpeakingExample(word.example);
                           speak(word.example);
-                          const audio = getAudio();
-                          if (audio) {
-                            const clear = () => {
-                              setSpeakingExample(null);
-                              audio.removeEventListener('ended', clear);
-                              audio.removeEventListener('error', clear);
-                            };
-                            audio.addEventListener('ended', clear);
-                            audio.addEventListener('error', clear);
-                          }
+                          // 浏览器语音合成无 ended 事件，用定时器清除状态
+                          setTimeout(() => setSpeakingExample(null), 3000);
                         }}
-                        className={`shrink-0 mt-0.5 w-5 h-5 rounded-full flex items-center justify-center transition-all ${
+                        className={`shrink-0 mt-0.5 w-6 h-6 rounded-full flex items-center justify-center transition-all ${
                           speakingExample === word.example
-                            ? 'text-emerald'
-                            : 'text-moon-dim/50 hover:text-emerald'
+                            ? 'bg-emerald/15 text-emerald'
+                            : 'bg-white/5 text-moon-dim/50 hover:bg-emerald/10 hover:text-emerald'
                         }`}
                         title="朗读例句"
                       >
-                        <Volume2 size={12} />
+                        <Volume2 size={13} />
                       </button>
                       <div className="flex-1 min-w-0 space-y-0.5">
                         <p className={`text-xs ${
@@ -293,7 +264,7 @@ export default function SceneDetail() {
                     </div>
                   </div>
                 )}
-              </motion.button>
+              </motion.div>
             ))}
           </div>
         )}
@@ -334,16 +305,8 @@ export default function SceneDetail() {
                       onClick={() => {
                         setSpeakingExample(grammar.example);
                         speak(grammar.example);
-                        const audio = getAudio();
-                        if (audio) {
-                          const clear = () => {
-                            setSpeakingExample(null);
-                            audio.removeEventListener('ended', clear);
-                            audio.removeEventListener('error', clear);
-                          };
-                          audio.addEventListener('ended', clear);
-                          audio.addEventListener('error', clear);
-                        }
+                        // 浏览器语音合成无 ended 事件，用定时器清除状态
+                        setTimeout(() => setSpeakingExample(null), 3000);
                       }}
                       className={`shrink-0 mt-0.5 w-6 h-6 rounded-full flex items-center justify-center transition-all ${
                         speakingExample === grammar.example

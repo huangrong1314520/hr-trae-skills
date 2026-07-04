@@ -23,7 +23,11 @@ function speakJa(text: string) {
   if (!audio) return;
   try { audio.pause(); } catch { /* ignore */ }
   audio.currentTime = 0;
+  try {
+    if ('speechSynthesis' in window) window.speechSynthesis.cancel();
+  } catch { /* ignore */ }
 
+  // 优先使用内嵌 base64 音频（本地，秒播）
   const embeddedUrl = getJaAudioDataUri(text);
   if (embeddedUrl) {
     audio.src = embeddedUrl;
@@ -34,12 +38,8 @@ function speakJa(text: string) {
     return;
   }
 
-  const remoteUrl = `https://fanyi.baidu.com/gettts?lan=jp&text=${encodeURIComponent(text)}&spd=3&source=web`;
-  audio.src = remoteUrl;
-  const p = audio.play();
-  if (p && typeof p.catch === 'function') {
-    p.catch(() => fallbackBrowserSpeech(text));
-  }
+  // 没有内嵌音频时，直接使用浏览器内置语音合成（最可靠，不依赖网络）
+  fallbackBrowserSpeech(text);
 }
 
 function fallbackBrowserSpeech(text: string) {
@@ -50,6 +50,10 @@ function fallbackBrowserSpeech(text: string) {
       const u = new SpeechSynthesisUtterance(text);
       u.lang = 'ja-JP';
       u.rate = 0.85;
+      // 尝试使用日语语音引擎
+      const voices = synth.getVoices();
+      const jaVoice = voices.find((v) => v.lang.startsWith('ja'));
+      if (jaVoice) u.voice = jaVoice;
       synth.speak(u);
     }
   } catch { /* ignore */ }
@@ -85,19 +89,24 @@ export default function Home() {
   const handleSpeakScene = (scene: SceneCourse, e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
+    // 优先朗读第一个单词（通常有内嵌音频），否则朗读标题
     const text = scene.words?.[0]?.word || scene.title;
     setSpeakingSceneId(scene.id);
     speakJa(text);
+
+    // 清除朗读状态：内嵌音频通过 ended 事件，浏览器语音通过定时器
     const audio = getHomeAudio();
+    const clear = () => {
+      setSpeakingSceneId(null);
+      audio?.removeEventListener('ended', clear);
+      audio?.removeEventListener('error', clear);
+    };
     if (audio) {
-      const clear = () => {
-        setSpeakingSceneId(null);
-        audio.removeEventListener('ended', clear);
-        audio.removeEventListener('error', clear);
-      };
       audio.addEventListener('ended', clear);
       audio.addEventListener('error', clear);
     }
+    // 兜底定时器（浏览器语音合成没有 ended 事件可监听）
+    setTimeout(() => setSpeakingSceneId(null), 3000);
   };
 
   // 获取场景课程列表（首页无需登录检查，直接展示）
